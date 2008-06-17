@@ -14,10 +14,10 @@ from paste.deploy import loadwsgi
 KEEP_GOING = True
 
 
-def spawn_new_children(sock, base_dir, config_url, dev):
+def spawn_new_children(sock, base_dir, config_url, dev, num_processes):
     child_pipes = []
     parent_pid = os.getpid()
-    for x in range(1):
+    for x in range(num_processes):
         child_side, parent_side = os.pipe()
         if not os.fork():
             os.close(parent_side)
@@ -35,7 +35,7 @@ def spawn_new_children(sock, base_dir, config_url, dev):
             if dev:
                 args.append('--dev')
 
-            os.execve(sys.executable, args, {'PYTHONPATH': os.environ['PYTHONPATH']})
+            os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
             ## Never gets here!
 
     os.close(child_side)
@@ -79,7 +79,7 @@ def reap_children():
             os.getpid(), pid, result)
 
 
-def run_controller(base_dir, config_url, dev=False):
+def run_controller(base_dir, config_url, dev=False, num_processes=1):
     print "(%s) Controller starting up at %s" % (
         os.getpid(), time.asctime())
 
@@ -94,7 +94,7 @@ def run_controller(base_dir, config_url, dev=False):
                     base, 'reloader_svn.py'),
                 '--dir=' + base,
                 '--pid=' + str(controller_pid)]
-            os.execve(sys.executable, args, {'PYTHONPATH': os.environ['PYTHONPATH']})
+            os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
             ## Never gets here!
 
     ctx = loadwsgi.loadcontext(
@@ -103,7 +103,7 @@ def run_controller(base_dir, config_url, dev=False):
 
     sock = api.tcp_listener(
         (ctx.local_conf['host'], int(ctx.local_conf['port'])))
-    spawn_new_children(sock, base_dir, config_url, dev)
+    spawn_new_children(sock, base_dir, config_url, dev, num_processes)
 
     while KEEP_GOING:
         reap_children()
@@ -114,7 +114,11 @@ def server_factory(global_conf, host, port, *args, **kw):
         global_conf['__file__'])[1]
     base_dir = global_conf['here']
     def run(app):
-        run_controller(base_dir, config_name, global_conf.get('debug') == 'true')
+        run_controller(
+            base_dir,
+            config_name,
+            global_conf.get('debug') == 'true',
+            int(global_conf.get('num_processes', 1)))
     return run
 
 
