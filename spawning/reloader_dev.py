@@ -13,23 +13,21 @@ import simplejson
 def watch_forever(urls, pid, interval):
     """
     """
-    if not urls:
-        modules = list(get_sys_modules_files())
-        fl = tempfile.NamedTemporaryFile()
-        fl.write(simplejson.dumps({'files': modules}))
-        fl.flush()
-        urls = ['file://' + fl.name]
-
     limiter = coros.CoroutinePool(track_events=True)
     module_mtimes = {}
     last_changed_time = None
     while True:
-        for url in urls:
-            limiter.execute(jsonhttp.get, url)
-
         uniques = sets.Set()
-        for i in range(len(urls)):
-            uniques.update(limiter.wait()['files'])
+
+        if urls:
+            for url in urls:
+                limiter.execute(jsonhttp.get, url)
+    
+            for i in range(len(urls)):
+                uniques.update(limiter.wait()['files'])
+        else:
+            uniques.update(list(get_sys_modules_files()))
+
 
         changed = False
         for filename in uniques:
