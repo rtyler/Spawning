@@ -12,6 +12,8 @@ from paste.deploy import loadwsgi
 
 from spawning import reloader_dev
 
+import simplejson
+
 
 class ExitChild(Exception):
     pass
@@ -22,8 +24,9 @@ def read_pipe_and_die(the_pipe, server_coro):
     api.switch(server_coro, exc=ExitChild)
 
 
-def serve_from_child(sock, base_dir, config_url):
-    wsgi_application = loadwsgi.loadapp(config_url, relative_to=base_dir)
+def serve_from_child(sock, base_dir, config_url, global_conf):
+    wsgi_application = loadwsgi.loadapp(
+        config_url, relative_to=base_dir, global_conf=global_conf)
 
     host, port = sock.getsockname()
     print "(%s) wsgi server listening on %s:%s using %s from %s (in %s)" % (
@@ -61,13 +64,14 @@ def main():
 
     options, args = parser.parse_args()
 
-    if len(args) < 5:
-        print "Usage: %s controller_pid config_url base_dir httpd_fd death_fd" % (
+    if len(args) < 6:
+        print "Usage: %s controller_pid config_url base_dir httpd_fd death_fd global_conf" % (
             sys.argv[0], )
         sys.exit(1)
 
-    controller_pid, config_url, base_dir, httpd_fd, death_fd = args
+    controller_pid, config_url, base_dir, httpd_fd, death_fd, global_conf = args
     controller_pid = int(controller_pid)
+    global_conf = simplejson.loads(global_conf)
 
     ## Set up the reloader
     if options.dev:
@@ -80,7 +84,7 @@ def main():
 
     sock = socket.fromfd(int(httpd_fd), socket.AF_INET, socket.SOCK_STREAM)
     serve_from_child(
-        sock, base_dir, config_url)
+        sock, base_dir, config_url, global_conf)
 
 
 if __name__ == '__main__':

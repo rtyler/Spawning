@@ -8,7 +8,8 @@ setup(
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.2',
+    version='0.3',
+    install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'paste.server_factory': [
             'main=spawning.spawning_controller:server_factory'

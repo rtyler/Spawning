@@ -5,16 +5,19 @@ util.wrap_socket_with_coroutine_socket()
 util.wrap_pipes_with_coroutine_pipes()
 util.wrap_threading_local_with_coro_local()
 
-
 import errno, os, optparse, signal, sys, time
 
 from paste.deploy import loadwsgi
 
+import simplejson
 
 KEEP_GOING = True
 
 
-def spawn_new_children(sock, base_dir, config_url, dev, num_processes):
+def spawn_new_children(sock, base_dir, config_url, global_conf):
+    num_processes = int(global_conf.get('num_processes', 1))
+    dev = global_conf.get('debug') == 'true'
+
     child_pipes = []
     parent_pid = os.getpid()
     for x in range(num_processes):
@@ -30,7 +33,8 @@ def spawn_new_children(sock, base_dir, config_url, dev, num_processes):
                 config_url,
                 base_dir,
                 str(sock.fileno()),
-                str(child_side)]
+                str(child_side),
+                simplejson.dumps(global_conf)]
 
             if dev:
                 args.append('--dev')
@@ -46,7 +50,7 @@ def spawn_new_children(sock, base_dir, config_url, dev, num_processes):
         del child_pipes[:]
 
         if KEEP_GOING:
-            spawn_new_children(sock, base_dir, config_url, dev)
+            spawn_new_children(sock, base_dir, config_url, global_conf)
 
         for child in tokill:
             os.write(child, ' ')
@@ -79,11 +83,12 @@ def reap_children():
             os.getpid(), pid, result)
 
 
-def run_controller(base_dir, config_url, dev=False, num_processes=1):
+def run_controller(base_dir, config_url, global_conf):
     print "(%s) Controller starting up at %s" % (
         os.getpid(), time.asctime())
 
     controller_pid = os.getpid()
+    dev = global_conf.get('debug') == 'true'
     if not dev:
         ## Set up the production reloader that watches the svn revision number.
         if not os.fork():
@@ -99,11 +104,11 @@ def run_controller(base_dir, config_url, dev=False, num_processes=1):
 
     ctx = loadwsgi.loadcontext(
         loadwsgi.SERVER,
-        config_url, relative_to=base_dir)
+        config_url, relative_to=base_dir, global_conf=global_conf)
 
     sock = api.tcp_listener(
         (ctx.local_conf['host'], int(ctx.local_conf['port'])))
-    spawn_new_children(sock, base_dir, config_url, dev, num_processes)
+    spawn_new_children(sock, base_dir, config_url, global_conf)
 
     while KEEP_GOING:
         reap_children()
@@ -117,8 +122,7 @@ def server_factory(global_conf, host, port, *args, **kw):
         run_controller(
             base_dir,
             config_name,
-            global_conf.get('debug') == 'true',
-            int(global_conf.get('num_processes', 1)))
+            global_conf)
     return run
 
 
@@ -139,5 +143,5 @@ if __name__ == '__main__':
         sys.exit(1)
 
     config_url, base_dir = args
-    run_controller(base_dir, config_url, options.dev)
+    run_controller(base_dir, config_url, {})
 
