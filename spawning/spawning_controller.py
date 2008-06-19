@@ -14,8 +14,8 @@ import simplejson
 KEEP_GOING = True
 
 
-def spawn_new_children(sock, base_dir, config_url, global_conf):
-    num_processes = int(global_conf.get('num_processes', 1))
+def spawn_new_children(sock, base_dir, config_url, global_conf, **kwargs):
+    num_processes = int(kwargs.get('num_processes', 1))
     dev = global_conf.get('debug') == 'true'
 
     child_pipes = []
@@ -38,7 +38,6 @@ def spawn_new_children(sock, base_dir, config_url, global_conf):
 
             if dev:
                 args.append('--dev')
-
             os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
             ## Never gets here!
 
@@ -83,7 +82,7 @@ def reap_children():
             os.getpid(), pid, result)
 
 
-def run_controller(base_dir, config_url, global_conf):
+def run_controller(base_dir, config_url, global_conf, **kwargs):
     print "(%s) Controller starting up at %s" % (
         os.getpid(), time.asctime())
 
@@ -108,7 +107,8 @@ def run_controller(base_dir, config_url, global_conf):
 
     sock = api.tcp_listener(
         (ctx.local_conf['host'], int(ctx.local_conf['port'])))
-    spawn_new_children(sock, base_dir, config_url, global_conf)
+    spawn_new_children(sock, base_dir, config_url, global_conf, **kwargs)
+    print global_conf
 
     while KEEP_GOING:
         reap_children()
@@ -122,7 +122,7 @@ def server_factory(global_conf, host, port, *args, **kw):
         run_controller(
             base_dir,
             config_name,
-            global_conf)
+            global_conf, **kw)
     return run
 
 
