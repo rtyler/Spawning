@@ -18,11 +18,12 @@ def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
     if 'spawning.spawning_child' in sys.modules:
         del sys.modules['spawning.spawning_child']
     from spawning import spawning_child
+    print "(%s) spawning child %s" % (os.getpid(), spawning_child.__file__)
 
     num_processes = int(local_conf.get('num_processes', 1))
     threadpool_workers = int(local_conf.get('threadpool_workers', 0))
     if not threadpool_workers:
-        print "Not using threadpool; installing eventlet cooperative socket"
+        print "(%s) Not using threadpool; installing eventlet cooperative socket" % (os.getpid(), )
 
     dev = global_conf.get('debug') == 'true'
 
@@ -42,7 +43,7 @@ def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
                 str(child_side),
                 simplejson.dumps(global_conf)]
 
-            if dev:
+            if x == 0 and dev: ## only start the reloader for the first process
                 args.append('--dev')
             if threadpool_workers:
                 args.append('--threads=%s' % (threadpool_workers, ))

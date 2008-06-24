@@ -56,7 +56,8 @@ def watch_forever(urls, pid, interval):
             if pid:
                 print "(%s) Sending SIGHUP to %s at %s" % (
                     os.getpid(), pid, time.asctime())
-                os.kill(pid, signal.SIGHUP)     
+                os.kill(pid, signal.SIGHUP)
+                return ## this process is going to die now, no need to keep watching
             else:
                 os._exit(3)
 
