@@ -15,6 +15,10 @@ KEEP_GOING = True
 
 
 def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
+    if 'spawning.spawning_child' in sys.modules:
+        del sys.modules['spawning.spawning_child']
+    from spawning import spawning_child
+
     num_processes = int(local_conf.get('num_processes', 1))
     threadpool_workers = int(local_conf.get('threadpool_workers', 0))
     if not threadpool_workers:
@@ -30,9 +34,7 @@ def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
             os.close(parent_side)
             args = [
                 sys.executable,
-                os.path.join(
-                    os.path.split(os.path.abspath(__file__))[0],
-                    'spawning_child.py'),
+                spawning_child.__file__,
                 str(parent_pid),
                 config_url,
                 base_dir,
