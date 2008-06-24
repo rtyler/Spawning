@@ -1,10 +1,7 @@
 """spawning_child.py
 """
 
-from eventlet import api, coros, util, wsgi
-util.wrap_socket_with_coroutine_socket()
-util.wrap_pipes_with_coroutine_pipes()
-util.wrap_threading_local_with_coro_local()
+from eventlet import api, coros, greenio, wsgi
 
 import optparse, os, signal, socket, sys, time
 
@@ -20,13 +17,46 @@ class ExitChild(Exception):
 
 
 def read_pipe_and_die(the_pipe, server_coro):
+    api.trampoline(the_pipe, read=True)
     os.read(the_pipe, 1)
     api.switch(server_coro, exc=ExitChild)
 
 
-def serve_from_child(sock, base_dir, config_url, global_conf):
+class ExecuteInThreadpool(object):
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, env, start_response, exc_info=None):
+        from eventlet import tpool
+        head = []
+        body = []
+        exc_info = [None]
+        def _start_response(status, headers, exc_info=None):
+            head[:] = status, headers, exc_info
+            return body.append
+
+        def get_list():
+            return list(self.app(env, _start_response))
+
+        result = tpool.execute(get_list)
+        start_response(*head)
+        return result
+
+
+def serve_from_child(sock, base_dir, config_url, global_conf, threads):
     wsgi_application = loadwsgi.loadapp(
         config_url, relative_to=base_dir, global_conf=global_conf)
+
+    if threads:
+        print "(%s) using %s threads" % (os.getpid(), threads, )
+        os.environ['EVENTLET_THREADPOOL_SIZE'] = str(threads)
+        from eventlet import tpool
+        wsgi_application = ExecuteInThreadpool(wsgi_application)
+    else:
+        from eventlet import util
+        util.wrap_socket_with_coroutine_socket()
+        util.wrap_pipes_with_coroutine_pipes()
+        util.wrap_threading_local_with_coro_local()
 
     host, port = sock.getsockname()
     print "(%s) wsgi server listening on %s:%s using %s from %s (in %s)" % (
@@ -61,6 +91,13 @@ def main():
         help='If --dev is passed, reload the server any time '
         'a loaded module changes. Otherwise, only when the svn '
         'revision of the current directory changes.')
+    parser.add_option("-t", "--threads",
+        type='int', dest='threads', default=0,
+        help='If --threads is passed, use a threadpool for executing '
+            'individual wsgi applications. If not, just run the wsgi '
+            'application in the io thread and install the eventlet '
+            'cooperative socket object so that i/o operations will '
+            'automatically yield to another wsgi application.')
 
     options, args = parser.parse_args()
 
@@ -82,9 +119,11 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     api.spawn(read_pipe_and_die, int(death_fd), api.getcurrent())
 
-    sock = socket.fromfd(int(httpd_fd), socket.AF_INET, socket.SOCK_STREAM)
+    sock = greenio.GreenSocket(
+        socket.fromfd(int(httpd_fd), socket.AF_INET, socket.SOCK_STREAM))
+
     serve_from_child(
-        sock, base_dir, config_url, global_conf)
+        sock, base_dir, config_url, global_conf, options.threads)
 
 
 if __name__ == '__main__':

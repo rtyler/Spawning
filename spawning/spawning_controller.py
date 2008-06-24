@@ -14,8 +14,12 @@ import simplejson
 KEEP_GOING = True
 
 
-def spawn_new_children(sock, base_dir, config_url, global_conf):
-    num_processes = int(global_conf.get('num_processes', 1))
+def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
+    num_processes = int(local_conf.get('num_processes', 1))
+    threadpool_workers = int(local_conf.get('threadpool_workers', 0))
+    if not threadpool_workers:
+        print "Not using threadpool; installing eventlet cooperative socket"
+
     dev = global_conf.get('debug') == 'true'
 
     child_pipes = []
@@ -38,19 +42,21 @@ def spawn_new_children(sock, base_dir, config_url, global_conf):
 
             if dev:
                 args.append('--dev')
+            if threadpool_workers:
+                args.append('--threads=%s' % (threadpool_workers, ))
 
             os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
             ## Never gets here!
 
-    os.close(child_side)
-    child_pipes.append(parent_side)
+        os.close(child_side)
+        child_pipes.append(parent_side)
 
     def sighup(_signum, _stack_frame):
         tokill = child_pipes[:]
         del child_pipes[:]
 
         if KEEP_GOING:
-            spawn_new_children(sock, base_dir, config_url, global_conf)
+            spawn_new_children(sock, base_dir, config_url, global_conf, local_conf)
 
         for child in tokill:
             os.write(child, ' ')
@@ -83,7 +89,7 @@ def reap_children():
             os.getpid(), pid, result)
 
 
-def run_controller(base_dir, config_url, global_conf):
+def run_controller(base_dir, config_url, global_conf, local_conf):
     print "(%s) Controller starting up at %s" % (
         os.getpid(), time.asctime())
 
@@ -108,7 +114,7 @@ def run_controller(base_dir, config_url, global_conf):
 
     sock = api.tcp_listener(
         (ctx.local_conf['host'], int(ctx.local_conf['port'])))
-    spawn_new_children(sock, base_dir, config_url, global_conf)
+    spawn_new_children(sock, base_dir, config_url, global_conf, local_conf)
 
     while KEEP_GOING:
         reap_children()
@@ -122,7 +128,8 @@ def server_factory(global_conf, host, port, *args, **kw):
         run_controller(
             base_dir,
             config_name,
-            global_conf)
+            global_conf,
+            kw)
     return run
 
 
@@ -143,5 +150,5 @@ if __name__ == '__main__':
         sys.exit(1)
 
     config_url, base_dir = args
-    run_controller(base_dir, config_url, {})
+    run_controller(base_dir, config_url, {}, {})
 
