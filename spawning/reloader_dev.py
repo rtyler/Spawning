@@ -4,6 +4,8 @@ if any of the files change.
 
 
 import optparse, os, sets, signal, sys, tempfile, time
+from os.path import join
+from distutils import sysconfig
 
 from eventlet import api, coros, jsonhttp
 
@@ -26,8 +28,8 @@ def watch_forever(urls, pid, interval):
             for i in range(len(urls)):
                 uniques.update(limiter.wait()['files'])
         else:
+            uniques.add(join(sysconfig.get_python_lib(), 'easy-install.pth'))
             uniques.update(list(get_sys_modules_files()))
-
 
         changed = False
         for filename in uniques:
