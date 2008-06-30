@@ -30,7 +30,6 @@ class ExecuteInThreadpool(object):
         from eventlet import tpool
         head = []
         body = []
-        exc_info = [None]
         def _start_response(status, headers, exc_info=None):
             head[:] = status, headers, exc_info
             return body.append
@@ -70,6 +69,10 @@ def serve_from_child(sock, base_dir, config_url, global_conf, threads):
         pass
     except ExitChild:
         pass
+
+    ## Once we get here, we just need to handle outstanding sockets, not
+    ## accept any new sockets, so we should close the server socket.
+    sock.close()
 
     server = server_event.wait()
 

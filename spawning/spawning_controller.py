@@ -5,7 +5,7 @@ util.wrap_socket_with_coroutine_socket()
 util.wrap_pipes_with_coroutine_pipes()
 util.wrap_threading_local_with_coro_local()
 
-import errno, os, optparse, signal, sys, time
+import errno, os, optparse, signal, socket, sys, time
 
 from paste.deploy import loadwsgi
 
@@ -115,8 +115,28 @@ def run_controller(base_dir, config_url, global_conf, local_conf):
         loadwsgi.SERVER,
         config_url, relative_to=base_dir, global_conf=global_conf)
 
-    sock = api.tcp_listener(
-        (ctx.local_conf['host'], int(ctx.local_conf['port'])))
+    sleeptime = 0.5
+    for x in range(8):
+        try:
+            sock = api.tcp_listener(
+                (ctx.local_conf['host'], int(ctx.local_conf['port'])))
+            break
+        except socket.error, e:
+            if e[0] != errno.EADDRINUSE:
+                raise
+            print "(%s) socket %s:%s already in use, retrying after %s seconds..." % (
+                os.getpid(),
+                ctx.local_conf['host'],
+                ctx.local_conf['port'],
+                sleeptime)
+            api.sleep(sleeptime)
+            sleeptime *= 2
+    else:
+        print "(%s) could not bind socket %s:%s, dying." % (
+            os.getpid(),
+            ctx.local_conf['host'],
+            ctx.local_conf['port'])
+        sys.exit(1)
     spawn_new_children(sock, base_dir, config_url, global_conf, local_conf)
 
     while KEEP_GOING:
