@@ -12,7 +12,7 @@ from eventlet import api, coros, jsonhttp
 import simplejson
 
 
-def watch_forever(urls, pid, interval):
+def watch_forever(urls, pid, interval, config_file=None):
     """
     """
     limiter = coros.CoroutinePool(track_events=True)
@@ -31,7 +31,11 @@ def watch_forever(urls, pid, interval):
             uniques.add(join(sysconfig.get_python_lib(), 'easy-install.pth'))
             uniques.update(list(get_sys_modules_files()))
 
+        if config_file:
+            uniques.add(config_file)
+
         changed = False
+        signum = signal.SIGHUP
         for filename in uniques:
             try:
                 stat = os.stat(filename)
@@ -43,6 +47,9 @@ def watch_forever(urls, pid, interval):
                 continue
             if filename.endswith('.pyc') and os.path.exists(filename[:-1]):
                 mtime = max(os.stat(filename[:-1]).st_mtime, mtime)
+            elif filename == config_file:
+                ## If the config file changed, kill the whole process
+                signum = signal.SIGTERM
             if not module_mtimes.has_key(filename):
                 module_mtimes[filename] = mtime
             elif module_mtimes[filename] < mtime:
@@ -56,7 +63,7 @@ def watch_forever(urls, pid, interval):
             if pid:
                 print "(%s) Sending SIGHUP to %s at %s" % (
                     os.getpid(), pid, time.asctime())
-                os.kill(pid, signal.SIGHUP)
+                os.kill(pid, signum)
                 return ## this process is going to die now, no need to keep watching
             else:
                 os._exit(3)

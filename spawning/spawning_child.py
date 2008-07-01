@@ -116,7 +116,8 @@ def main():
     ## Set up the reloader
     if options.dev:
         api.spawn(
-            reloader_dev.watch_forever, [], controller_pid, 1)
+            reloader_dev.watch_forever, [], controller_pid, 1, os.path.join(
+                base_dir, config_url.split(':', 1)[1]))
 
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)

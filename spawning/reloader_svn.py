@@ -30,9 +30,14 @@ def watch_forever(directory, pid, interval):
         if new_revision is not None and new_revision != revision:
             revision = new_revision
             if pid:
-                print "(%s) Sending SIGHUP to %s at %s" % (
+                ## This is stupid: Since we can't tell whether the ini file changed
+                ## and paste makes it a pain to re-parse the ini file,
+                ## we just terminate the controller when running with the svn reloader.
+                ## There will be a short period when the socket is not accepting,
+                ## causing refused connections.
+                print "(%s) Sending SIGTERM to %s at %s" % (
                     os.getpid(), pid, time.asctime())
-                os.kill(pid, signal.SIGHUP)     
+                os.kill(pid, signal.SIGTERM)     
             else:
                 print "(%s) Revision changed, dying at %s" % (
                     os.getpid(), time.asctime())
