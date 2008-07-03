@@ -1,68 +1,79 @@
 
 
-from eventlet import api, backdoor, coros, util, wsgi
+from eventlet import api, backdoor, coros, processes, util, wsgi
 util.wrap_socket_with_coroutine_socket()
 util.wrap_pipes_with_coroutine_pipes()
 util.wrap_threading_local_with_coro_local()
 
-import errno, os, optparse, signal, socket, sys, time
-
-from paste.deploy import loadwsgi
+import commands, errno, os, optparse, signal, socket, sys, time
 
 import simplejson
 
+from spawning import spawning_child
+
+
 KEEP_GOING = True
+EXIT_ARGUMENTS = None
 
 
-def spawn_new_children(sock, base_dir, config_url, global_conf, local_conf):
-    if 'spawning.spawning_child' in sys.modules:
-        del sys.modules['spawning.spawning_child']
-    from spawning import spawning_child
-    print "(%s) spawning child %s" % (os.getpid(), spawning_child.__file__)
+def environ():
+    env = os.environ.copy()
+    env['PYTHONPATH'] = os.environ.get('PYTHONPATH', '')
+    return env
 
-    num_processes = int(local_conf.get('num_processes', 1))
-    threadpool_workers = int(local_conf.get('threadpool_workers', 0))
-    if not threadpool_workers:
-        print "(%s) Not using threadpool; installing eventlet cooperative socket" % (os.getpid(), )
 
-    dev = global_conf.get('debug') == 'true'
+def spawn_new_children(sock, factory_qual, args, config):
+    num_processes = int(config.get('num_processes', 1))
 
-    child_pipes = []
     parent_pid = os.getpid()
+    print "(%s) spawning %s children with %s" % (parent_pid, num_processes, spawning_child.__file__)
+
+    dev = args.get('dev', False)
+    child_pipes = []
     for x in range(num_processes):
         child_side, parent_side = os.pipe()
         if not os.fork():
             os.close(parent_side)
-            args = [
+            command = [
                 sys.executable,
                 spawning_child.__file__,
                 str(parent_pid),
-                config_url,
-                base_dir,
                 str(sock.fileno()),
                 str(child_side),
-                simplejson.dumps(global_conf)]
+                factory_qual,
+                simplejson.dumps(args)]
 
-            if x == 0 and dev: ## only start the reloader for the first process
-                args.append('--dev')
-            if threadpool_workers:
-                args.append('--threads=%s' % (threadpool_workers, ))
-
-            os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
-            ## Never gets here!
+            if x == 0:
+                command.append('--reload')
+            env = environ()
+            env['EVENTLET_THREADPOOL_SIZE'] = str(config.get('threadpool_workers', 0))
+            os.execve(sys.executable, command, env)
 
         os.close(child_side)
         child_pipes.append(parent_side)
 
     def sighup(_signum, _stack_frame):
+        global EXIT_ARGUMENTS
         tokill = child_pipes[:]
         del child_pipes[:]
 
-        if KEEP_GOING:
-            spawn_new_children(sock, base_dir, config_url, global_conf, local_conf)
-
         for child in tokill:
             os.write(child, ' ')
+
+        if KEEP_GOING:
+            ## In case the installed copy of spawning has changed, get the name of
+            ## spawning_controller from a fresh copy of python and then execve it.
+            proc = processes.Process('python', [])
+            proc.write('from pkg_resources import load_entry_point\n')
+            proc.write("print load_entry_point('Spawning', 'console_scripts', 'spawn').func_code.co_filename")
+            proc.close_stdin()
+            new_script = proc.read().strip()
+            command = [sys.executable, new_script, '--fd=%s' % (sock.fileno(), )]
+            if dev:
+                command.append('--dev')
+            command.append(factory_qual)
+            command.append(simplejson.dumps(args))
+            EXIT_ARGUMENTS = command
 
     signal.signal(signal.SIGHUP, sighup)
 
@@ -92,12 +103,36 @@ def reap_children():
             os.getpid(), pid, result)
 
 
-def run_controller(base_dir, config_url, global_conf, local_conf):
-    print "(%s) Controller starting up at %s" % (
-        os.getpid(), time.asctime())
+def bind_socket(config):
+    sleeptime = 0.5
+    host = config.get('host', '')
+    port = config.get('port', 8080)
+    for x in range(8):
+        try:
+            sock = api.tcp_listener((host, port))
+            break
+        except socket.error, e:
+            if e[0] != errno.EADDRINUSE:
+                raise
+            print "(%s) socket %s:%s already in use, retrying after %s seconds..." % (
+                os.getpid(), host, port, sleeptime)
+            api.sleep(sleeptime)
+            sleeptime *= 2
+    else:
+        print "(%s) could not bind socket %s:%s, dying." % (
+            controller_pid, host, port)
+        sys.exit(1)
+    return sock
 
+
+def run_controller(factory_qual, args, sock=None):
     controller_pid = os.getpid()
-    dev = global_conf.get('debug') == 'true'
+    print "(%s) **** Controller starting up at %s" % (
+        controller_pid, time.asctime())
+
+    config = api.named(factory_qual)(args)
+
+    dev = config.get('dev', False)
     if not dev:
         ## Set up the production reloader that watches the svn revision number.
         if not os.fork():
@@ -108,55 +143,31 @@ def run_controller(base_dir, config_url, global_conf, local_conf):
                     base, 'reloader_svn.py'),
                 '--dir=' + base,
                 '--pid=' + str(controller_pid)]
-            os.execve(sys.executable, args, {'PYTHONPATH': os.environ.get('PYTHONPATH', '')})
+            os.execve(sys.executable, args, environ())
             ## Never gets here!
 
-    ctx = loadwsgi.loadcontext(
-        loadwsgi.SERVER,
-        config_url, relative_to=base_dir, global_conf=global_conf)
+    if sock is None:
+        sock = bind_socket(config)
 
-    sleeptime = 0.5
-    for x in range(8):
-        try:
-            sock = api.tcp_listener(
-                (ctx.local_conf['host'], int(ctx.local_conf['port'])))
-            break
-        except socket.error, e:
-            if e[0] != errno.EADDRINUSE:
-                raise
-            print "(%s) socket %s:%s already in use, retrying after %s seconds..." % (
-                os.getpid(),
-                ctx.local_conf['host'],
-                ctx.local_conf['port'],
-                sleeptime)
-            api.sleep(sleeptime)
-            sleeptime *= 2
-    else:
-        print "(%s) could not bind socket %s:%s, dying." % (
-            os.getpid(),
-            ctx.local_conf['host'],
-            ctx.local_conf['port'])
-        sys.exit(1)
-    spawn_new_children(sock, base_dir, config_url, global_conf, local_conf)
+    spawn_new_children(sock, factory_qual, args, config)
 
     while KEEP_GOING:
         reap_children()
+        if EXIT_ARGUMENTS:
+            from eventlet import tpool
+            tpool.killall()
+            while True:
+                try:
+                    os.execve(sys.executable, EXIT_ARGUMENTS, environ())
+                    ## Never gets here!
+                except OSError:
+                    ## There is a possibility killall will return before all threads are
+                    ## killed, causing execve to raise an exception. In this case we just
+                    ## keep trying until the threads have exited.
+                    pass
 
 
-def server_factory(global_conf, host, port, *args, **kw):
-    config_name = 'config:' + os.path.split(
-        global_conf['__file__'])[1]
-    base_dir = global_conf['here']
-    def run(app):
-        run_controller(
-            base_dir,
-            config_name,
-            global_conf,
-            kw)
-    return run
-
-
-if __name__ == '__main__':
+def main():
     parser = optparse.OptionParser()
     parser.add_option("-d", "--dev",
         action='store_true', dest='dev',
@@ -164,14 +175,48 @@ if __name__ == '__main__':
         'a loaded module changes. Otherwise, only when the svn '
         'revision changes. Dev servers '
         'also run only one python process at a time.')
+    parser.add_option('-f', '--fd', type='int', dest='fd',
+        help='For internal use only')
 
     options, args = parser.parse_args()
 
     if len(args) < 2:
-        print "Usage: %s config_url base_dir" % (
+        print """Usage: %s factory_qual factory_args
+    factory_qual: dotted path (eg mypackage.mymodule.myfunc) to callable which returns:
+        {'host': ..., 'port': ..., 'app_factory': ...,
+        'num_processes': ..., 'num_threads': ..., 'dev': ..., 'watch': [...]}
+            host: The local ip to bind to.
+            port: The local port to bind to.
+            app_factory: The dotted path to the wsgi application factory.
+                Will be called with the result of factory_qual as the argument.
+            num_processes: The number of processes to spawn.
+            num_threads: The number of threads to use in the threadpool in each process.
+                If 0, install the eventlet monkeypatching and do not use the threadpool.
+                Code which blocks instead of cooperating will block the process, possibly
+                causing stalls. (TODO sigalrm?)
+            dev: If True, watch all files in sys.modules, easy-install.pth, and any additional
+                file paths in the 'watch' list for changes and restart child
+                processes on change. If False, only reload if the svn revision of the
+                current directory changes.
+            watch: List of additional files to watch for changes and reload when changed.
+
+    factory_args: json object which will be passed to application factory.
+        The boolean value of the --dev command line flag will be added as the
+        'dev' key with a value of True or False.""" % (
             sys.argv[0], )
         sys.exit(1)
 
-    config_url, base_dir = args
-    run_controller(base_dir, config_url, {}, {})
+    factory_qual, factory_args = args
+    factory_args = simplejson.loads(factory_args)
+    factory_args['dev'] = options.dev
 
+    if options.fd:
+        sock = socket.fromfd(options.fd, socket.AF_INET, socket.SOCK_STREAM)
+    else:
+        sock = None
+
+    run_controller(factory_qual, factory_args, sock)
+
+
+if __name__ == '__main__':
+    main()

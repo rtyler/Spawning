@@ -12,11 +12,14 @@ setup(
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.7pre',
+    version='0.8pre',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
+        'console_scripts': [
+            'spawn=spawning.spawning_controller:main',
+        ],
         'paste.server_factory': [
-            'main=spawning.spawning_controller:server_factory'
+            'main=spawning.paste_factory:server_factory'
         ]
     },
     classifiers=[
