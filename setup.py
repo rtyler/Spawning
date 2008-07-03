@@ -12,7 +12,7 @@ setup(
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.8pre',
+    version='0.6pre',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [

@@ -7,11 +7,21 @@ from spawning import spawning_controller
 
 
 def config_factory(args):
+    if 'config_url' in args:
+        config_url = args['config_url']
+        relative_to = args['relative_to']
+        global_conf = args['global_conf']
+    else:
+        config_file = os.path.abspath(args['args'][0])
+        config_url = 'config:%s' % (os.path.basename(config_file), )
+        relative_to = os.path.dirname(config_file)
+        global_conf = {}
+
     ctx = loadwsgi.loadcontext(
         loadwsgi.SERVER,
-        args['config_url'],
-        relative_to=args['relative_to'],
-        global_conf=args['global_conf'])
+        config_url,
+        relative_to=relative_to,
+        global_conf=global_conf)
 
     return {
         'dev': ctx.global_conf.get('debug') == 'true',
@@ -22,8 +32,8 @@ def config_factory(args):
         'watch': [ctx.global_conf['__file__']],
 
         'app_factory': 'spawning.paste_factory.app_factory',
-        'config_url': args['config_url'],
-        'relative_to': args['relative_to'],
+        'config_url': config_url,
+        'relative_to': relative_to,
         'global_conf': ctx.global_conf
     }
 
