@@ -204,16 +204,16 @@ def main():
             spawn --factory=spawning.paste_factory.config_factory development.ini
         """)
     parser.add_option("-i", "--host",
-        dest='host', default='',
+        dest='host', default=None,
         help='The local ip address to bind.')
     parser.add_option("-p", "--port",
-        dest='port', type='int', default=8080,
+        dest='port', type='int', default=None,
         help='The local port address to bind.')
     parser.add_option("-s", "--processes",
-        dest='processes', type='int', default=1,
+        dest='processes', type='int', default=None,
         help='The number of unix processes to start to use for handling web requests.')
     parser.add_option("-t", "--threads",
-        dest='threads', type='int', default=8,
+        dest='threads', type='int', default=None,
         help="The number of posix threads to use for handling web requests. "
             "If threads is 0, do not use threads but instead use eventlet's cooperative "
             "threads, monkeypatching the socket and pipe operations which normally block "

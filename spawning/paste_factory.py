@@ -23,13 +23,20 @@ def config_factory(args):
         relative_to=relative_to,
         global_conf=global_conf)
 
+    watch = args.get('watch', None)
+    if watch is None:
+        watch = []
+    watch.append(ctx.global_conf['__file__'])
+
     return {
-        'dev': ctx.global_conf.get('debug') == 'true',
-        'host': ctx.local_conf['host'],
-        'port': int(ctx.local_conf['port']),
-        'num_processes': int(ctx.local_conf.get('num_processes', 1)),
-        'threadpool_workers': int(ctx.local_conf.get('threadpool_workers', 0)),
-        'watch': [ctx.global_conf['__file__']],
+        'dev': args.get('dev', False) or ctx.global_conf.get('debug') == 'true',
+        'host': args.get('host', None) or ctx.local_conf['host'],
+        'port': args.get('port', None) or int(ctx.local_conf['port']),
+        'num_processes': args.get('num_processes', None) or int(
+            ctx.local_conf.get('num_processes', 1)),
+        'threadpool_workers': args.get('threadpool_workers', None) or int(
+            ctx.local_conf.get('threadpool_workers', 0)),
+        'watch': watch,
 
         'app_factory': 'spawning.paste_factory.app_factory',
         'config_url': config_url,
