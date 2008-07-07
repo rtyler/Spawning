@@ -12,12 +12,16 @@ def config_factory(args):
         'watch': args.get('watch', []),
 
         'app_factory': 'spawning.wsgi_factory.app_factory',
-        'app': args['args'][0]
+        'app': args['args'][0],
+        'middleware': args['args'][1:]
     }
 
 
 def app_factory(config):
-    return api.named(config['app'])
+    app = api.named(config['app'])
+    for mid in config['middleware']:
+        app = api.named(mid)(app)
+    return app
 
 
 def hello_world(env, start_response):

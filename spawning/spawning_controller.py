@@ -5,7 +5,7 @@ util.wrap_socket_with_coroutine_socket()
 util.wrap_pipes_with_coroutine_pipes()
 util.wrap_threading_local_with_coro_local()
 
-import commands, errno, os, optparse, signal, socket, sys, time
+import commands, errno, os, optparse, pprint, signal, socket, sys, time
 
 import simplejson
 
@@ -27,6 +27,12 @@ def spawn_new_children(sock, factory_qual, args, config):
 
     parent_pid = os.getpid()
     print "(%s) spawning %s children with %s" % (parent_pid, num_processes, spawning_child.__file__)
+
+    print "(%s) serving wsgi with configuration:" % (
+        os.getpid(), )
+    prettyconfig = pprint.pformat(config)
+    for line in prettyconfig.split('\n'):
+        print "(%s)\t%s" % (os.getpid(), line)
 
     dev = args.get('dev', False)
     child_pipes = []
@@ -204,19 +210,19 @@ def main():
             spawn --factory=spawning.paste_factory.config_factory development.ini
         """)
     parser.add_option("-i", "--host",
-        dest='host', default=None,
+        dest='host', default='',
         help='The local ip address to bind.')
     parser.add_option("-p", "--port",
-        dest='port', type='int', default=None,
+        dest='port', type='int', default=8080,
         help='The local port address to bind.')
     parser.add_option("-s", "--processes",
-        dest='processes', type='int', default=None,
+        dest='processes', type='int', default=1,
         help='The number of unix processes to start to use for handling web requests.')
     parser.add_option("-t", "--threads",
-        dest='threads', type='int', default=None,
+        dest='threads', type='int', default=4,
         help="The number of posix threads to use for handling web requests. "
             "If threads is 0, do not use threads but instead use eventlet's cooperative "
-            "threads, monkeypatching the socket and pipe operations which normally block "
+            "greenlet-based microthreads, monkeypatching the socket and pipe operations which normally block "
             "to cooperate instead. Note that most blocking database api modules will not "
             "automatically cooperate.")
     parser.add_option('-w', '--watch', dest='watch', action='append',

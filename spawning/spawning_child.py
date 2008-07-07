@@ -3,7 +3,7 @@
 
 from eventlet import api, coros, greenio, tpool, wsgi
 
-import optparse, os, pprint, signal, socket, sys, time
+import optparse, os, signal, socket, sys, time
 
 from paste.deploy import loadwsgi
 
@@ -57,12 +57,6 @@ def serve_from_child(sock, config):
         util.wrap_threading_local_with_coro_local()
 
     host, port = sock.getsockname()
-    
-    print "(%s) serving wsgi with configuration:" % (
-        os.getpid(), )
-    prettyconfig = pprint.pformat(config)
-    for line in prettyconfig.split('\n'):
-        print "(%s)\t%s" % (os.getpid(), line)
 
     server_event = coros.event()
     try:
@@ -91,6 +85,7 @@ def serve_from_child(sock, config):
 
 
 def main():
+    from spawning import spawning_controller # spawning_controller just to watch for changes
     parser = optparse.OptionParser()
     parser.add_option("-r", "--reload",
         action='store_true', dest='reload',
@@ -110,7 +105,12 @@ def main():
 
     ## Set up the reloader
     if options.reload:
-        print "(%s) reloader watching sys.modules and config files" % (os.getpid(), )
+        watch = config.get('watch', None)
+        if watch:
+            watching = ' and %s' % watch
+        else:
+            watching = ''
+        print "(%s) reloader watching sys.modules%s" % (os.getpid(), watching)
         api.spawn(
             reloader_dev.watch_forever, [], controller_pid, 1, config.get('watch', []))
 
