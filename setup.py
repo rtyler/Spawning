@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='Spawning',
-    description='Spawning is a wsgi server which supports multiple processes, multiple threads, non-blocking HTTP io, and automatic graceful upgrading of code.'
+    description='Spawning is a wsgi server which supports multiple processes, multiple threads, non-blocking HTTP io, and automatic graceful upgrading of code.',
     long_description="""Spawning uses eventlet to do non-blocking IO for http requests and responses. This means the server will scale to a large number of keep-alive connections easily. However, it also delegates requests using other forms of multiprocessing and is configurable to be useful in a wide variety of situations. It supports multiple Python processes as well as a threadpool.
 
 Single or Multiple Process
@@ -48,7 +48,7 @@ Run the wsgi application on port 80, with 4 processes each using a threadpool of
 % spawn --processes=4 --threads=0 my_wsgi_module.my_comet_application
 
 Use a threadpool of size 0, which indicates that eventlet monkeypatching should be performed and wsgi applications should all be called in the same thread. Useful for writing a comet-style application where a lot of requests are simply waiting on a server-side event or internal network io to complete.
-"""
+""",
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),

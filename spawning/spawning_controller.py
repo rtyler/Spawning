@@ -49,7 +49,7 @@ def spawn_new_children(sock, factory_qual, args, config):
                 factory_qual,
                 simplejson.dumps(args)]
 
-            if x == 0:
+            if dev and x == 0:
                 command.append('--reload')
             env = environ()
             env['EVENTLET_THREADPOOL_SIZE'] = str(config.get('threadpool_workers', 0))
