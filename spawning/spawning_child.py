@@ -7,6 +7,7 @@ import optparse, os, signal, socket, sys, time
 
 from paste.deploy import loadwsgi
 
+from spawning import processpool_parent
 from spawning import reloader_dev
 
 import simplejson
@@ -42,10 +43,13 @@ class ExecuteInThreadpool(object):
 
 
 def serve_from_child(sock, config):
+    processpool_workers = config.get('processpool_workers', 0)
+    threads = config.get('threadpool_workers', 0)
     wsgi_application = api.named(config['app_factory'])(config)
 
-    threads = config.get('threadpool_workers', 0)
-    if threads:
+    if processpool_workers:
+        wsgi_application = processpool_parent.ExecuteInProcessPool(config)
+    elif threads:
         print "(%s) using %s threads" % (os.getpid(), threads, )
         wsgi_application = ExecuteInThreadpool(wsgi_application)
     else:
@@ -80,12 +84,15 @@ def serve_from_child(sock, config):
                 os.getpid(), server.outstanding_requests)
         last_outstanding = server.outstanding_requests
         api.sleep(0.1)
+
+    if hasattr(wsgi_application, 'kill'):
+        wsgi_application.kill()
+
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
 
 
 def main():
-    from spawning import spawning_controller # spawning_controller just to watch for changes
     parser = optparse.OptionParser()
     parser.add_option("-r", "--reload",
         action='store_true', dest='reload',
@@ -112,7 +119,7 @@ def main():
             watching = ''
         print "(%s) reloader watching sys.modules%s" % (os.getpid(), watching)
         api.spawn(
-            reloader_dev.watch_forever, [], controller_pid, 1, config.get('watch', []))
+            reloader_dev.watch_forever, [], controller_pid, 1, watch)
 
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)

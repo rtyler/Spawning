@@ -217,7 +217,10 @@ def main():
         help='The local port address to bind.')
     parser.add_option("-s", "--processes",
         dest='processes', type='int', default=1,
-        help='The number of unix processes to start to use for handling web requests.')
+        help='The number of unix processes to start to use for handling web i/o.')
+    parser.add_option("-o", "--workers",
+        dest='workers', type='int', default=0,
+        help='The number of unix worker processes to start to execute the wsgi application in. If defined, this overrides --threads and no posix threads are used.')
     parser.add_option("-t", "--threads",
         dest='threads', type='int', default=4,
         help="The number of posix threads to use for handling web requests. "
@@ -249,6 +252,7 @@ def main():
         'host': options.host,
         'port': options.port,
         'num_processes': options.processes,
+        'processpool_workers': options.workers,
         'threadpool_workers': options.threads,
         'watch': options.watch,
         'dev': not options.release,

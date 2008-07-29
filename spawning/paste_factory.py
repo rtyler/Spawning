@@ -36,6 +36,8 @@ def config_factory(args):
             ctx.local_conf.get('num_processes', 1)),
         'threadpool_workers': args.get('threadpool_workers', None) or int(
             ctx.local_conf.get('threadpool_workers', 0)),
+        'processpool_workers': args.get('processpool_workers', None) or int(
+            ctx.local_conf.get('processpool_workers', 0)),
         'watch': watch,
 
         'app_factory': 'spawning.paste_factory.app_factory',

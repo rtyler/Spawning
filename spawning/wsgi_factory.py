@@ -8,6 +8,7 @@ def config_factory(args):
         'host': args.get('host', None) or '',
         'port': args.get('port', None) or 8080,
         'num_processes': args.get('num_processes', 1),
+        'processpool_workers': args.get('processpool_workers', 0),
         'threadpool_workers': args.get('threadpool_workers', 0),
         'watch': args.get('watch', []),
 

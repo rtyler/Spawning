@@ -16,6 +16,7 @@ def config_factory(args):
         'port': args.get('port', None),
         'num_processes': args.get('num_processes', None),
         'threadpool_workers': args.get('threadpool_workers', None),
+        'processpool_workers': args.get('processpool_workers', None),
         'watch': watch,
         'django_settings_module': args.get('args', [None])[0],
         'app_factory': 'spawning.django_factory.app_factory',
