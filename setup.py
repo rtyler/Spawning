@@ -27,6 +27,8 @@ Running spawning
 
 Spawning can be used to launch a wsgi application from the command line using the "spawn" script, or using Python Paste. To use with paste, specify use = egg:Spawning in the [server:main] section of a paste ini file.
 
+Spawning can also be used to run a Django application by using --factory=spawning.django_factory.config_factory.
+
 Examples of running spawning:
 
 % spawn my_wsgi_module.my_wsgi_application
@@ -36,6 +38,10 @@ This will run the wsgi application callable called "my_wsgi_application" inside 
 % spawn --factory=spawning.paste_factory.config_factory development.ini
 
 Run whatever is configured inside of development.ini. Equivalent to using paster serve with an ini file configured to use Spawning as the server.
+
+% spawn --factory=spawning.django_factory.config_factory mysite.settings
+
+Run the Django app mysite.
 
 % spawn my_wsgi_module.my_wsgi_application other_wsgi_module.some_wsgi_middleware
 
