@@ -42,6 +42,12 @@ class ExecuteInThreadpool(object):
         return result
 
 
+def deadman_timeout(signum, frame):
+    print "(%s) !!! Deadman timer expired, killing self with extreme prejudice" % (
+        os.getpid(), )
+    os.kill(os.getpid(), signal.SIGKILL)
+
+
 def serve_from_child(sock, config):
     processpool_workers = config.get('processpool_workers', 0)
     threads = config.get('threadpool_workers', 0)
@@ -73,7 +79,8 @@ def serve_from_child(sock, config):
 
     ## Set a deadman timer to violently kill the process if it doesn't die after
     ## some long timeout.
-    pass
+    signal.signal(signal.SIGALRM, deadman_timeout)
+    signal.alarm(config['deadman_timeout'])
 
     ## Once we get here, we just need to handle outstanding sockets, not
     ## accept any new sockets, so we should close the server socket.
@@ -84,8 +91,8 @@ def serve_from_child(sock, config):
     last_outstanding = None
     while server.outstanding_requests:
         if last_outstanding != server.outstanding_requests:
-            print "(%s) %s requests remaining, waiting..." % (
-                os.getpid(), server.outstanding_requests)
+            print "(%s) %s requests remaining, waiting... (timeout after %s)" % (
+                os.getpid(), server.outstanding_requests, config['deadman_timeout'])
         last_outstanding = server.outstanding_requests
         api.sleep(0.1)
 

@@ -20,7 +20,8 @@ DEFAULTS = {
     'watch': [],
     'dev': True,
     'host': '',
-    'port': 8080
+    'port': 8080,
+    'deadman_timeout': 120,
 }
 
 
@@ -245,6 +246,11 @@ def main():
         help='If --release is passed, reload the server only when the svn '
         'revision changes. Otherwise, reload any time '
         'a loaded module or configuration file changes.')
+    parser.add_option("-d", "--deadman_timeout",
+        type='int', dest='deadman_timeout', default=DEFAULTS['deadman_timeout'],
+        help='When killing an old i/o process because the code has changed, don\'t wait '
+        'any longer than the deadman timeout value for the process to gracefully exit. '
+        'If all requests have not completed by the deadman timeout, the process will be mercilessly killed.')
     parser.add_option('-z', '--fd', type='int', dest='fd',
         help='For internal use only')
 
@@ -264,7 +270,8 @@ def main():
         'threadpool_workers': options.threads,
         'watch': options.watch,
         'dev': not options.release,
-        'args': positional_args
+        'deadman_timeout': options.deadman_timeout,
+        'args': positional_args,
     }
 
     if options.fd:
