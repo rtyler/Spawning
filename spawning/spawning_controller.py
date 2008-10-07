@@ -1,11 +1,8 @@
 
 
-from eventlet import api, backdoor, coros, processes, util, wsgi
-util.wrap_socket_with_coroutine_socket()
-util.wrap_pipes_with_coroutine_pipes()
-util.wrap_threading_local_with_coro_local()
+from eventlet import api, processes
 
-import commands, errno, os, optparse, pprint, signal, socket, sys, time
+import errno, os, optparse, pprint, signal, socket, sys, time
 
 import simplejson
 
@@ -14,6 +11,17 @@ from spawning import spawning_child
 
 KEEP_GOING = True
 EXIT_ARGUMENTS = None
+
+
+DEFAULTS = {
+    'num_processes': 1,
+    'threadpool_workers': 10, 
+    'processpool_workers': 0,
+    'watch': [],
+    'dev': True,
+    'host': '',
+    'port': 8080
+}
 
 
 def environ():
@@ -210,19 +218,19 @@ def main():
             spawn --factory=spawning.paste_factory.config_factory development.ini
         """)
     parser.add_option("-i", "--host",
-        dest='host', default='',
+        dest='host', default=DEFAULTS['host'],
         help='The local ip address to bind.')
     parser.add_option("-p", "--port",
-        dest='port', type='int', default=8080,
+        dest='port', type='int', default=DEFAULTS['port'],
         help='The local port address to bind.')
     parser.add_option("-s", "--processes",
-        dest='processes', type='int', default=1,
+        dest='processes', type='int', default=DEFAULTS['num_processes'],
         help='The number of unix processes to start to use for handling web i/o.')
     parser.add_option("-o", "--workers",
-        dest='workers', type='int', default=0,
+        dest='workers', type='int', default=DEFAULTS['processpool_workers'],
         help='The number of unix worker processes to start to execute the wsgi application in. If defined, this overrides --threads and no posix threads are used.')
     parser.add_option("-t", "--threads",
-        dest='threads', type='int', default=4,
+        dest='threads', type='int', default=DEFAULTS['threadpool_workers'],
         help="The number of posix threads to use for handling web requests. "
             "If threads is 0, do not use threads but instead use eventlet's cooperative "
             "greenlet-based microthreads, monkeypatching the socket and pipe operations which normally block "

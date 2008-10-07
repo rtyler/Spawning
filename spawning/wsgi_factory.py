@@ -3,19 +3,11 @@ from eventlet import api
 
 
 def config_factory(args):
-    return {
-        'dev': args.get('dev', False),
-        'host': args.get('host', None) or '',
-        'port': args.get('port', None) or 8080,
-        'num_processes': args.get('num_processes', 1),
-        'processpool_workers': args.get('processpool_workers', 0),
-        'threadpool_workers': args.get('threadpool_workers', 0),
-        'watch': args.get('watch', []),
+    args['app_factory'] = 'spawning.wsgi_factory.app_factory'
+    args['app'] = args['args'][0]
+    args['middleware'] = args['args'][1:]
 
-        'app_factory': 'spawning.wsgi_factory.app_factory',
-        'app': args['args'][0],
-        'middleware': args['args'][1:]
-    }
+    return args
 
 
 def app_factory(config):

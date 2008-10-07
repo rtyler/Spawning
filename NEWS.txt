@@ -1,0 +1,17 @@
+0.8
+====
+
+Fixed a problem where eventlet monkeypatching was inappropriately installed in child processes which use threads. This would result in certain operations (primarily DNS lookup operations) resulting in a greenlet "cannot switch to another thread" exception.
+
+Changed the paste factory to use 8 worker threads by default, to match the paste default. Previously if the paste ini file did not mention how many worker threads to use, spawning would default to 0 and switch into cooperative, non-blocking mode.
+
+0.7
+====
+
+Added django_factory.
+
+Add an optional worker processpool which can be used as an equivalent to the worker threadpool.
+
+Added command-line script to launch a wsgi application, 'spawn'.
+
+	spawn mymodule.my_wsgi_app

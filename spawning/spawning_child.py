@@ -71,6 +71,10 @@ def serve_from_child(sock, config):
     except ExitChild:
         pass
 
+    ## Set a deadman timer to violently kill the process if it doesn't die after
+    ## some long timeout.
+    pass
+
     ## Once we get here, we just need to handle outstanding sockets, not
     ## accept any new sockets, so we should close the server socket.
     sock.close()
