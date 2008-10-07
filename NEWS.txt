@@ -5,6 +5,10 @@ Fixed a problem where eventlet monkeypatching was inappropriately installed in c
 
 Changed the paste factory to use 8 worker threads by default, to match the paste default. Previously if the paste ini file did not mention how many worker threads to use, spawning would default to 0 and switch into cooperative, non-blocking mode.
 
+Added a deadman timeout to child processes which have been told to exit and are waiting for outstanding requests to finish. If the timeout expires before all requests have completed, we assume the process is hung and kill -9 it. The default timeout is 120 seconds.
+
+If an i/o child process dies with an exit code other than 0, the controller decides something must have gone horribly wrong and restarts all of the children.
+
 0.7
 ====
 
