@@ -27,5 +27,5 @@ def hello_world(env, start_response):
 def really_long(env, start_response):
     start_response('200 OK', [('Content-type', 'text/plain')])
     time.sleep(180)
-    return ['Hello, World!\r\n']
-    
+    return ['Goodbye, World!\r\n']
+

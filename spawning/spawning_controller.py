@@ -73,7 +73,11 @@ def spawn_new_children(sock, factory_qual, args, config):
         del child_pipes[:]
 
         for child in tokill:
-            os.write(child, ' ')
+            try:
+                os.write(child, ' ')
+            except OSError, e:
+                if e[0] != errno.EPIPE:
+                    raise
 
         if KEEP_GOING:
             ## In case the installed copy of spawning has changed, get the name of
@@ -119,6 +123,14 @@ def reap_children():
     else:
         print "(%s) Child %s died with code %s." % (
             os.getpid(), pid, result)
+        if result != 0:
+            ## The way the code is set up right now it's easier just to panic and
+            ## start new children if one of the children dies in a way we didn't expect.
+            ## Would probably be better to give this code access to child_pipes
+            ## in spawn_new_children somehow so it can just start a new child and munge
+            ## child_pipes appropriately
+            print "(%s) !!! Panic: Why did that child die? Restarting children" % (os.getpid(), )
+            os.kill(os.getpid(), signal.SIGHUP)
 
 
 def bind_socket(config):
