@@ -88,7 +88,7 @@ def spawn_new_children(sock, factory_qual, args, config):
             proc.close_stdin()
             new_script = proc.read().strip()
             command = [sys.executable, new_script]
-            command.extend(sys.argv[1:])
+            command.extend(args['args'])
             for arg in command:
                 if arg.startswith('--fd='):
                     break
@@ -121,8 +121,8 @@ def reap_children():
                 if e[0] == errno.ECHILD:
                     break
     else:
-        print "(%s) Child %s died with code %s." % (
-            os.getpid(), pid, result)
+        print "(%s) Child %s died with code %s (%s)." % (
+            os.getpid(), pid, result, errno.errorcode.get(result, '?'))
         if result != 0:
             ## The way the code is set up right now it's easier just to panic and
             ## start new children if one of the children dies in a way we didn't expect.

@@ -55,16 +55,16 @@ def serve_from_child(sock, config):
 
     if processpool_workers:
         wsgi_application = processpool_parent.ExecuteInProcessPool(config)
-    elif threads:
+    elif threads > 1:
         print "(%s) using %s threads" % (os.getpid(), threads, )
         wsgi_application = ExecuteInThreadpool(wsgi_application)
-    else:
+    elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (
             os.getpid(), )
         from eventlet import util
         util.wrap_socket_with_coroutine_socket()
-        util.wrap_pipes_with_coroutine_pipes()
-        util.wrap_threading_local_with_coro_local()
+        #util.wrap_pipes_with_coroutine_pipes()
+        #util.wrap_threading_local_with_coro_local()
 
     host, port = sock.getsockname()
 
@@ -95,9 +95,6 @@ def serve_from_child(sock, config):
                 os.getpid(), server.outstanding_requests, config['deadman_timeout'])
         last_outstanding = server.outstanding_requests
         api.sleep(0.1)
-
-    if hasattr(wsgi_application, 'kill'):
-        wsgi_application.kill()
 
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
