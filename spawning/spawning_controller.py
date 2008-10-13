@@ -88,7 +88,11 @@ def spawn_new_children(sock, factory_qual, args, config):
             proc.close_stdin()
             new_script = proc.read().strip()
             command = [sys.executable, new_script]
-            command.extend(args['args'])
+            if 'override_args' in args:
+                command.extend(args['override_args'])
+            else:
+                command.extend(sys.argv[1:])
+
             for arg in command:
                 if arg.startswith('--fd='):
                     break
@@ -296,3 +300,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
