@@ -35,7 +35,8 @@ def spawn_new_children(sock, factory_qual, args, config):
     num_processes = int(config.get('num_processes', 1))
 
     parent_pid = os.getpid()
-    print "(%s) spawning %s children with %s" % (parent_pid, num_processes, spawning_child.__file__)
+    print "(%s) spawning %s children with %s" % (
+        parent_pid, num_processes, spawning_child.__file__)
 
     print "(%s) serving wsgi with configuration:" % (
         os.getpid(), )
@@ -175,8 +176,12 @@ def run_controller(factory_qual, args, sock=None):
                 sys.executable,
                 os.path.join(
                     base, 'reloader_svn.py'),
+                '--pid=' + str(controller_pid),
                 '--dir=' + base,
-                '--pid=' + str(controller_pid)]
+            ]
+            for dirname in config.get('source_directories', []):
+                args.append('--dir=' + dirname)
+
             os.execve(sys.executable, args, environ())
             ## Never gets here!
 
@@ -300,5 +305,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 

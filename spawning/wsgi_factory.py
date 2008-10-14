@@ -1,4 +1,6 @@
 
+import inspect
+import os
 import time
 
 from eventlet import api
@@ -8,6 +10,11 @@ def config_factory(args):
     args['app_factory'] = 'spawning.wsgi_factory.app_factory'
     args['app'] = args['args'][0]
     args['middleware'] = args['args'][1:]
+
+    args['source_directories'] = [os.path.split(
+        inspect.getfile(
+            inspect.getmodule(
+                api.named(args['app']))))[0]]
 
     return args
 

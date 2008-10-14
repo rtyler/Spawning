@@ -21,35 +21,35 @@ def get_revision(directory):
             return int(line[len('Revision: '):])
 
 
-def watch_forever(directory, pid, interval):
+def watch_forever(directories, pid, interval):
     """
     """
-    revision = get_revision(directory)
+    revisions = {}
+    for dirname in directories:
+        revisions[dirname] = get_revision(dirname)
     while True:
-        new_revision = get_revision(directory)
-        if new_revision is not None and new_revision != revision:
-            revision = new_revision
-            if pid:
-                ## This is stupid: Since we can't tell whether the ini file changed
-                ## and paste makes it a pain to re-parse the ini file,
-                ## we just terminate the controller when running with the svn reloader.
-                ## There will be a short period when the socket is not accepting,
-                ## causing refused connections.
-                print "(%s) Sending SIGTERM to %s at %s" % (
-                    os.getpid(), pid, time.asctime())
-                os.kill(pid, signal.SIGTERM)     
-            else:
-                print "(%s) Revision changed, dying at %s" % (
-                    os.getpid(), time.asctime())
-                os._exit(3)
+        for dirname in directories:
+            new_revision = get_revision(dirname)
+
+            if new_revision is not None and new_revision != revisions[dirname]:
+                revisions[dirname] = new_revision
+                if pid:
+                    print "(%s) SVN revision changed on %s to %s; Sending SIGHUP to %s at %s" % (
+                        os.getpid(), dirname, new_revision, pid, time.asctime())
+                    os.kill(pid, signal.SIGHUP)
+                    os._exit(0)
+                else:
+                    print "(%s) Revision changed, dying at %s" % (
+                        os.getpid(), time.asctime())
+                    os._exit(3)
 
         time.sleep(interval)
 
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-d", "--dir", dest='dir',
-        help="The directory to do svn info in. If not given, use cwd.")
+    parser.add_option("-d", "--dir", dest='dirs', action="append",
+        help="The directories to do svn info in. If not given, use cwd.")
     parser.add_option("-p", "--pid",
         type="int", dest="pid",
         help="A pid to SIGHUP when the svn revision changes. "
@@ -63,7 +63,7 @@ def main():
     if options.pid is None:
         options.pid = os.getpid()
     try:
-        watch_forever(options.dir, int(options.pid), options.interval)
+        watch_forever(options.dirs, int(options.pid), options.interval)
     except KeyboardInterrupt:
         pass
 

@@ -33,6 +33,7 @@ def config_factory(args):
     args['app_factory'] = 'spawning.paste_factory.app_factory'
     args['config_url'] = config_url
     args['relative_to'] = relative_to
+    args['source_directories'] = [relative_to]
     args['global_conf'] = ctx.global_conf
 
     debug = ctx.global_conf.get('debug', None)
