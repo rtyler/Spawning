@@ -3,7 +3,7 @@ to a process when the revision changes.
 """
 
 
-import commands, optparse, os, signal, sys, tempfile, time
+import commands, optparse, os, pprint, signal, sys, tempfile, time
 
 
 def get_revision(directory):
@@ -24,11 +24,36 @@ def get_revision(directory):
 def watch_forever(directories, pid, interval):
     """
     """
+    ## Look for externals
+    all_svn_repos = set(directories)
+
+    def visit(parent, subdirname, children):
+        if '.svn' in children:
+            children.remove('.svn')
+        out = commands.getoutput('svn propget svn:externals %s' % (subdirname, ))
+        for line in out.split('\n'):
+            line = line.strip()
+            if line and 'is not a working copy' not in line:
+                name, _external_url = line.split()
+                fulldir = os.path.join(parent, subdirname, name)
+                ## Don't keep going into the external in the walk()
+                children.remove(name)
+                directories.append(fulldir)
+                all_svn_repos.add(fulldir)
+
+    while directories:
+        dirname = directories.pop(0)
+        os.path.walk(dirname, visit, dirname)
+
     revisions = {}
-    for dirname in directories:
+    for dirname in all_svn_repos:
         revisions[dirname] = get_revision(dirname)
+
+    print "(%s) svn watcher watching directories: %s" % (
+        os.getpid(), pprint.pformat(list(all_svn_repos)))
+
     while True:
-        for dirname in directories:
+        for dirname in all_svn_repos:
             new_revision = get_revision(dirname)
 
             if new_revision is not None and new_revision != revisions[dirname]:

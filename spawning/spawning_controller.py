@@ -155,7 +155,7 @@ def bind_socket(config):
             sleeptime *= 2
     else:
         print "(%s) could not bind socket %s:%s, dying." % (
-            controller_pid, host, port)
+            os.getpid(), host, port)
         sys.exit(1)
     return sock
 

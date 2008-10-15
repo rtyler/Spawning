@@ -9,6 +9,12 @@ Added a deadman timeout to child processes which have been told to exit and are 
 
 If an i/o child process dies with an exit code other than 0, the controller decides something must have gone horribly wrong and restarts all of the children.
 
+0.8.1: Fix a bug where the reloader didn't work with paster serve.
+
+0.8.2: In the svn reloader, watch both spawning's directory and the directory of the wsgi application we are serving. Also, fix the django_factory which was broken by 0.8.
+
+0.8.3: For all svn repositories the svn reloader is watching, also watch any svn:externals repositories contained therein.
+
 0.7
 ====
 
