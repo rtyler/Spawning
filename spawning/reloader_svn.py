@@ -3,7 +3,7 @@ to a process when the revision changes.
 """
 
 
-import commands, optparse, os, pprint, signal, sys, tempfile, time
+import commands, optparse, os, signal, sys, tempfile, time
 
 
 def get_revision(directory):
@@ -50,7 +50,7 @@ def watch_forever(directories, pid, interval):
         revisions[dirname] = get_revision(dirname)
 
     print "(%s) svn watcher watching directories: %s" % (
-        os.getpid(), pprint.pformat(list(all_svn_repos)))
+        os.getpid(), list(all_svn_repos))
 
     while True:
         for dirname in all_svn_repos:
