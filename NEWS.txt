@@ -15,6 +15,8 @@ If an i/o child process dies with an exit code other than 0, the controller deci
 
 0.8.3: For all svn repositories the svn reloader is watching, also watch any svn:externals repositories contained therein.
 
+0.8.4: Fixed a bug where the controller process dying unexpectedly (such as from a kill -9) would cause the children to have an exception but then keep running forever, preventing any other processes from using the ports again in the future.
+
 0.7
 ====
 

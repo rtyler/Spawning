@@ -18,8 +18,11 @@ class ExitChild(Exception):
 
 
 def read_pipe_and_die(the_pipe, server_coro):
-    api.trampoline(the_pipe, read=True)
-    os.read(the_pipe, 1)
+    try:
+        api.trampoline(the_pipe, read=True)
+        os.read(the_pipe, 1)
+    except socket.error:
+        pass
     api.switch(server_coro, exc=ExitChild)
 
 

@@ -14,7 +14,7 @@ Single or Multiple Process
 If your wsgi applications store state in memory, Spawning can be configured to run only one Python process. In this configuration your application state will be available to all requests but your application will not be able to take full advantage of multiple processors. Using multiple processes will take advantage of all processors and thus should be used for applications which do not share state.
 
 Single or Multiple Worker Thread (or Worker Process)
-=========================
+================================================================
 
 If your wsgi applications perform a certain subset of blocking calls which have been monkeypatched by eventlet to cooperate instead (such as operations in the socket module), you can configure each process to run only a single main thread and cooperate using greenlet microthreads instead. This can be useful if your application is very small and needs to scale to a large number of simultaneous requests, such as a COMET server or an application which uses AJAX polling. However, most existing wsgi applications will probably perform blocking operations (for example, calling database adapter libraries which perform blocking socket operations). Therefore, for most wsgi applications a combination of multiple processes and multiple threads will be ideal.
 
@@ -58,7 +58,7 @@ Use a threadpool of size 0, which indicates that eventlet monkeypatching should 
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.9pre',
+    version='0.8.4',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [
