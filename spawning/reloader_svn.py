@@ -24,22 +24,28 @@ def get_revision(directory):
 def watch_forever(directories, pid, interval):
     """
     """
+    if directories is None:
+        directories = ['.']
     ## Look for externals
     all_svn_repos = set(directories)
 
     def visit(parent, subdirname, children):
         if '.svn' in children:
             children.remove('.svn')
-        out = commands.getoutput('svn propget svn:externals %s' % (subdirname, ))
+        status, out = commands.getstatusoutput('svn propget svn:externals %s' % (subdirname, ))
+        if status:
+            return
+
         for line in out.split('\n'):
             line = line.strip()
-            if line and 'is not a working copy' not in line:
-                name, _external_url = line.split()
-                fulldir = os.path.join(parent, subdirname, name)
-                ## Don't keep going into the external in the walk()
-                children.remove(name)
-                directories.append(fulldir)
-                all_svn_repos.add(fulldir)
+            if not line:
+                continue
+            name, _external_url = line.split()
+            fulldir = os.path.join(parent, subdirname, name)
+            ## Don't keep going into the external in the walk()
+            children.remove(name)
+            directories.append(fulldir)
+            all_svn_repos.add(fulldir)
 
     while directories:
         dirname = directories.pop(0)

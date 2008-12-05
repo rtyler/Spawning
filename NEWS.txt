@@ -17,6 +17,8 @@ If an i/o child process dies with an exit code other than 0, the controller deci
 
 0.8.4: Fixed a bug where the controller process dying unexpectedly (such as from a kill -9) would cause the children to have an exception but then keep running forever, preventing any other processes from using the ports again in the future.
 
+0.8.5: Fixed a bug in the svn reloader where files that svn reported as 'not under version control' would cause the reloader to crash and exit immediately. I now use svn's exit code instead of sniffing svn's output, which should also help avoid problems for anyone who is using a localized copy of svn, or if svn ever changes the content of these messages.
+
 0.7
 ====
 
