@@ -1,7 +1,7 @@
 """spawning_child.py
 """
 
-from eventlet import api, coros, greenio, tpool, wsgi
+from eventlet import api, coros, greenio, wsgi
 
 import optparse, os, signal, socket, sys, time
 
@@ -23,6 +23,10 @@ def read_pipe_and_die(the_pipe, server_coro):
         os.read(the_pipe, 1)
     except socket.error:
         pass
+    try:
+        os.close(the_pipe)
+    except socket.error:
+        pass
     api.switch(server_coro, exc=ExitChild)
 
 
@@ -31,6 +35,7 @@ class ExecuteInThreadpool(object):
         self.app = app
 
     def __call__(self, env, start_response, exc_info=None):
+        from eventlet import tpool
         head = []
         body = []
         def _start_response(status, headers, exc_info=None):

@@ -70,24 +70,14 @@ def app_factory(config):
 
 
 def server_factory(global_conf, host, port, *args, **kw):
-    additional_restart_arguments = []
-    for arg in sys.argv:
-        if '=' in arg and not arg.startswith('--'):
-            additional_restart_arguments.append(arg)
-
     global_conf['mochi_backend_ip'] = '127.0.0.1'
     config_url = 'config:' + os.path.split(global_conf['__file__'])[1]
     relative_to = global_conf['here']
 
     def run(app):
         args = spawning_controller.DEFAULTS.copy()
-        override_args = [
-                '--factory=spawning.paste_factory.config_factory',
-                global_conf['__file__']]
-        override_args.extend(additional_restart_arguments)
         args.update(
-            {'config_url': config_url, 'relative_to': relative_to, 'global_conf': global_conf,
-            'override_args': override_args})
+            {'config_url': config_url, 'relative_to': relative_to, 'global_conf': global_conf})
 
         spawning_controller.run_controller(
             'spawning.paste_factory.config_factory', args)

@@ -1,16 +1,17 @@
 
 
-from eventlet import api, processes
+from eventlet import api
 
 import errno, os, optparse, pprint, signal, socket, sys, time
 
+import commands
 import simplejson
 
 from spawning import spawning_child
 
 
 KEEP_GOING = True
-EXIT_ARGUMENTS = None
+RESTART_CONTROLLER = False
 
 
 DEFAULTS = {
@@ -69,38 +70,19 @@ def spawn_new_children(sock, factory_qual, args, config):
         child_pipes.append(parent_side)
 
     def sighup(_signum, _stack_frame):
-        global EXIT_ARGUMENTS
+        global RESTART_CONTROLLER
+        RESTART_CONTROLLER = True
+
         tokill = child_pipes[:]
         del child_pipes[:]
 
         for child in tokill:
             try:
                 os.write(child, ' ')
+                os.close(child)
             except OSError, e:
                 if e[0] != errno.EPIPE:
                     raise
-
-        if KEEP_GOING:
-            ## In case the installed copy of spawning has changed, get the name of
-            ## spawning_controller from a fresh copy of python and then execve it.
-            proc = processes.Process('python', [])
-            proc.write('from pkg_resources import load_entry_point\n')
-            proc.write("print load_entry_point('Spawning', 'console_scripts', 'spawn').func_code.co_filename")
-            proc.close_stdin()
-            new_script = proc.read().strip()
-            command = [sys.executable, new_script]
-            if 'override_args' in args:
-                command.extend(args['override_args'])
-            else:
-                command.extend(sys.argv[1:])
-
-            for arg in command:
-                if arg.startswith('--fd='):
-                    break
-            else:
-                command.append('--fd=%s' % (sock.fileno(), ))
-            
-            EXIT_ARGUMENTS = command
 
     signal.signal(signal.SIGHUP, sighup)
 
@@ -126,16 +108,19 @@ def reap_children():
                 if e[0] == errno.ECHILD:
                     break
     else:
-        print "(%s) Child %s died with code %s (%s)." % (
-            os.getpid(), pid, result, errno.errorcode.get(result, '?'))
-        if result != 0:
+        if result:
+            print "(%s) Child %s died with code %s (%s)." % (
+                os.getpid(), pid, result, errno.errorcode.get(result, '?'))
             ## The way the code is set up right now it's easier just to panic and
             ## start new children if one of the children dies in a way we didn't expect.
             ## Would probably be better to give this code access to child_pipes
             ## in spawn_new_children somehow so it can just start a new child and munge
             ## child_pipes appropriately
-            print "(%s) !!! Panic: Why did that child die? Restarting children" % (os.getpid(), )
+            print "(%s) !!! Panic: Why did that child die? Restarting" % (os.getpid(), )
             os.kill(os.getpid(), signal.SIGHUP)
+        else:
+            print "(%s) Child %s exited normally." % (
+                os.getpid(), pid)
 
 
 def bind_socket(config):
@@ -190,54 +175,37 @@ def run_controller(factory_qual, args, sock=None):
 
     spawn_new_children(sock, factory_qual, args, config)
 
-    while KEEP_GOING:
+    while True:
         reap_children()
-        if EXIT_ARGUMENTS:
-            from eventlet import tpool
-            tpool.killall()
-            while True:
-                try:
-                    os.execve(sys.executable, EXIT_ARGUMENTS, environ())
-                    ## Never gets here!
-                except OSError:
-                    ## There is a possibility killall will return before all threads are
-                    ## killed, causing execve to raise an exception. In this case we just
-                    ## keep trying until the threads have exited.
-                    pass
+        if RESTART_CONTROLLER:
+            break
+
+    if KEEP_GOING:
+        ## In case the installed copy of spawning has changed, 
+        ## execv spawn here so the controller process gets reloaded.
+
+        ## We could somehow check to see if the spawning_controller
+        ## actually is different from the current one and not restart the
+        ## entire process in this case, which would result in faster restarts.
+        ## But it's 'fast enough' for now.
+
+        restart_args = dict(
+            factory=factory_qual,
+            factory_args=args,
+            fd=sock.fileno())
+
+        env = '/usr/bin/env'
+        os.execve(
+            env,
+            [env, 'spawn', '-z', simplejson.dumps(restart_args)],
+            environ())
+        ## Never gets here!
 
 
 def main():
-    parser = optparse.OptionParser()
+    parser = optparse.OptionParser(description="Spawning is an easy-to-use and flexible wsgi server. It supports graceful restarting so that your site finishes serving any old requests while starting new processes to handle new requests with the new code. For the simplest usage, simply pass the dotted path to your wsgi application: 'spawn my_module.my_wsgi_app'")
     parser.add_option("-f", "--factory", dest='factory', default='spawning.wsgi_factory.config_factory',
-        help="""dotted path (eg mypackage.mymodule.myfunc) to callable which returns:
-        {'host': ..., 'port': ..., 'app_factory': ...,
-        'num_processes': ..., 'num_threads': ..., 'dev': ..., 'watch': [...]}
-            host: The local ip to bind to.
-            port: The local port to bind to.
-            app_factory: The dotted path to the wsgi application factory.
-                Will be called with the result of factory_qual as the argument.
-            num_processes: The number of processes to spawn.
-            num_threads: The number of threads to use in the threadpool in each process.
-                If 0, install the eventlet monkeypatching and do not use the threadpool.
-                Code which blocks instead of cooperating will block the process, possibly
-                causing stalls. (TODO sigalrm?)
-            dev: If True, watch all files in sys.modules, easy-install.pth, and any additional
-                file paths in the 'watch' list for changes and restart child
-                processes on change. If False, only reload if the svn revision of the
-                current directory changes.
-            watch: List of additional files to watch for changes and reload when changed.
-
-        The default config factory, spawning.wsgi_factory.config_factory, takes all of these arguments
-        from the args specified on the command line. It also requires a positional argument, the
-        dotted path to the wsgi application to serve. Example:
-
-            spawn my_package.my_module.my_wsgi_app
-
-        The paste config factory, spawning.paste_factory.config_factory, takes all of these
-        arguments from a standard paste .ini file. It ignores the command-line arguments.
-        It requires a positional argument, the name of the ini file to load. Example:
-
-            spawn --factory=spawning.paste_factory.config_factory development.ini
+        help="""Dotted path (eg mypackage.mymodule.myfunc) to a callable which takes a dictionary containing the command line arguments and figures out what needs to be done to start the wsgi application. Current valid values are: spawning.wsgi_factory.config_factory, spawning.paste_factory.config_factory, and spawning.django_factory.config_factory. The factory used determines what the required positional command line arguments will be. See the spawning.wsgi_factory module for documentation on how to write a new factory.
         """)
     parser.add_option("-i", "--host",
         dest='host', default=DEFAULTS['host'],
@@ -272,35 +240,41 @@ def main():
         help='When killing an old i/o process because the code has changed, don\'t wait '
         'any longer than the deadman timeout value for the process to gracefully exit. '
         'If all requests have not completed by the deadman timeout, the process will be mercilessly killed.')
-    parser.add_option('-z', '--fd', type='int', dest='fd',
+    parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
 
     options, positional_args = parser.parse_args()
 
-    if len(positional_args) < 1:
+    if len(positional_args) < 1 and not options.restart_args:
         parser.error("At least one argument is required. "
             "For the default factory, it is the dotted path to the wsgi application "
             "(eg my_package.my_module.my_wsgi_application). For the paste factory, it "
-            "is the ini file to load.")
+            "is the ini file to load. Pass --help for detailed information about available options.")
 
-    factory_args = {
-        'host': options.host,
-        'port': options.port,
-        'num_processes': options.processes,
-        'processpool_workers': options.workers,
-        'threadpool_workers': options.threads,
-        'watch': options.watch,
-        'dev': not options.release,
-        'deadman_timeout': options.deadman_timeout,
-        'args': positional_args,
-    }
-
-    if options.fd:
-        sock = socket.fromfd(options.fd, socket.AF_INET, socket.SOCK_STREAM)
+    if options.restart_args:
+        restart_args = simplejson.loads(options.restart_args)
+        factory = restart_args['factory']
+        factory_args = restart_args['factory_args']
+        sock = socket.fromfd(restart_args['fd'], socket.AF_INET, socket.SOCK_STREAM)
+        ## socket.fromfd doesn't result in a socket object that has the same fd.
+        ## The old fd is still open however, so we close it so we don't leak.
+        os.close(restart_args['fd'])
     else:
+        factory = options.factory
+        factory_args = {
+            'host': options.host,
+            'port': options.port,
+            'num_processes': options.processes,
+            'processpool_workers': options.workers,
+            'threadpool_workers': options.threads,
+            'watch': options.watch,
+            'dev': not options.release,
+            'deadman_timeout': options.deadman_timeout,
+            'args': positional_args,
+        }
         sock = None
 
-    run_controller(options.factory, factory_args, sock)
+    run_controller(factory, factory_args, sock)
 
 
 if __name__ == '__main__':

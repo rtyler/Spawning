@@ -19,6 +19,8 @@ If an i/o child process dies with an exit code other than 0, the controller deci
 
 0.8.5: Fixed a bug in the svn reloader where files that svn reported as 'not under version control' would cause the reloader to crash and exit immediately. I now use svn's exit code instead of sniffing svn's output, which should also help avoid problems for anyone who is using a localized copy of svn, or if svn ever changes the content of these messages.
 
+0.8.6: Fix a file descriptor leak that occurred when the controller reloaded. If your code changed enough times over the lifetime of the server (thousands of times) it would eventually run out of file descriptors and refuse to start up. Now the number of file descriptors stays constant no matter how many times the server restarts.
+
 0.7
 ====
 

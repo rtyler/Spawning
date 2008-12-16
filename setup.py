@@ -29,36 +29,37 @@ Spawning can be used to launch a wsgi application from the command line using th
 
 Spawning can also be used to run a Django application by using --factory=spawning.django_factory.config_factory.
 
-Examples of running spawning:
+Examples of running spawning
+============================
 
-% spawn my_wsgi_module.my_wsgi_application
+Run the wsgi application callable called "my_wsgi_application" inside the my_wsgi_module.py file::
 
-This will run the wsgi application callable called "my_wsgi_application" inside the my_wsgi_module.py file.
+  % spawn my_wsgi_module.my_wsgi_application
 
-% spawn --factory=spawning.paste_factory.config_factory development.ini
+Run whatever is configured inside of the paste-style configuration file development.ini. Equivalent to using paster serve with an ini file configured to use Spawning as the server::
 
-Run whatever is configured inside of development.ini. Equivalent to using paster serve with an ini file configured to use Spawning as the server.
+  % spawn --factory=spawning.paste_factory.config_factory development.ini
 
-% spawn --factory=spawning.django_factory.config_factory mysite.settings
+Run the Django app mysite::
 
-Run the Django app mysite.
+  % spawn --factory=spawning.django_factory.config_factory mysite.settings
 
-% spawn my_wsgi_module.my_wsgi_application other_wsgi_module.some_wsgi_middleware
+Run the wsgi application wrapped with some middleware. Pass as many middleware strings as desired after the wsgi application name::
 
-Run the wsgi application wrapped with some middleware. Pass as many middleware strings as desired after the wsgi application name.
+  % spawn my_wsgi_module.my_wsgi_application other_wsgi_module.some_wsgi_middleware
 
-% sudo spawn --port=80 --processes=4 --threads=8 my_wsgi_module.my_wsgi_application
+Run the wsgi application on port 80, with 4 processes each using a threadpool of size 8::
 
-Run the wsgi application on port 80, with 4 processes each using a threadpool of size 8.
+  % sudo spawn --port=80 --processes=4 --threads=8 my_wsgi_module.my_wsgi_application
 
-% spawn --processes=4 --threads=0 my_wsgi_module.my_comet_application
+Use a threadpool of size 0, which indicates that eventlet monkeypatching should be performed and wsgi applications should all be called in the same thread. Useful for writing a comet-style application where a lot of requests are simply waiting on a server-side event or internal network io to complete::
 
-Use a threadpool of size 0, which indicates that eventlet monkeypatching should be performed and wsgi applications should all be called in the same thread. Useful for writing a comet-style application where a lot of requests are simply waiting on a server-side event or internal network io to complete.
+  % spawn --processes=4 --threads=0 my_wsgi_module.my_comet_application
 """,
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.8.5',
+    version='0.8.6',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [

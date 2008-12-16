@@ -1,4 +1,28 @@
+"""The config_factory takes a dictionary containing the command line arguments
+and should return the same dictionary after modifying any of the settings it wishes.
+At the very least the config_factory must set the 'app_factory' key in the returned
+argument dictionary, which should be the dotted path to the function which will be
+called to actually return the wsgi application which will be served.  Also, the
+config_factory can look at the 'args' key for any additional positional command-line
+arguments that were passed to spawn, and modify the configuration dictionary
+based on it's contents.
 
+Return value of config_factory should be a dict containing:
+    app_factory: The dotted path to the wsgi application factory.
+        Will be called with the result of factory_qual as the argument.
+    host: The local ip to bind to.
+    port: The local port to bind to.
+    num_processes: The number of processes to spawn.
+    num_threads: The number of threads to use in the threadpool in each process.
+        If 0, install the eventlet monkeypatching and do not use the threadpool.
+        Code which blocks instead of cooperating will block the process, possibly
+        causing stalls. (TODO sigalrm?)
+    dev: If True, watch all files in sys.modules, easy-install.pth, and any additional
+        file paths in the 'watch' list for changes and restart child
+        processes on change. If False, only reload if the svn revision of the
+        current directory changes.
+    watch: List of additional files to watch for changes and reload when changed.
+"""
 import inspect
 import os
 import time
