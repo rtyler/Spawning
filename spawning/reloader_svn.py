@@ -59,6 +59,15 @@ def watch_forever(directories, pid, interval):
         os.getpid(), list(all_svn_repos))
 
     while True:
+        if pid:
+            ## Check to see if our controller is still alive; if not, just exit.
+            try:
+                os.getpgid(pid)
+            except OSError:
+                print "(%s) reloader_svn is orphaned; controller %s no longer running. Exiting." % (
+                    os.getpid(), pid)
+                os._exit(0)
+
         for dirname in all_svn_repos:
             new_revision = get_revision(dirname)
 

@@ -156,6 +156,8 @@ def run_controller(factory_qual, args, sock=None):
     if not dev:
         ## Set up the production reloader that watches the svn revision number.
         if not os.fork():
+            if sock is not None:
+                sock.close()
             base = os.path.split(__file__)[0]
             args = [
                 sys.executable,
