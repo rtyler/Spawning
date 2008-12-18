@@ -6,12 +6,15 @@ import errno, os, optparse, pprint, signal, socket, sys, time
 
 import commands
 import simplejson
+import time
+import traceback
 
 from spawning import spawning_child
 
 
 KEEP_GOING = True
 RESTART_CONTROLLER = False
+PANIC = False
 
 
 DEFAULTS = {
@@ -49,7 +52,15 @@ def spawn_new_children(sock, factory_qual, args, config):
     child_pipes = []
     for x in range(num_processes):
         child_side, parent_side = os.pipe()
-        if not os.fork():
+        try:
+            child_pid = os.fork()
+        except:
+            print "(%s) Couldn't fork child! Panic!" % (os.getpid(), )
+            traceback.print_exc()
+            restart_controller(factory_qual, args, sock, panic=True)
+            ## Never gets here!
+
+        if not child_pid:
             os.close(parent_side)
             command = [
                 sys.executable,
@@ -116,6 +127,8 @@ def reap_children():
             ## Would probably be better to give this code access to child_pipes
             ## in spawn_new_children somehow so it can just start a new child and munge
             ## child_pipes appropriately
+            global PANIC
+            PANIC = True
             print "(%s) !!! Panic: Why did that child die? Restarting" % (os.getpid(), )
             os.kill(os.getpid(), signal.SIGHUP)
         else:
@@ -145,12 +158,50 @@ def bind_socket(config):
     return sock
 
 
+def restart_controller(factory_qual, args, sock, panic=False):
+    ## In case the installed copy of spawning has changed, 
+    ## execv spawn here so the controller process gets reloaded.
+
+    ## We could somehow check to see if the spawning_controller
+    ## actually is different from the current one and not restart the
+    ## entire process in this case, which would result in faster restarts.
+    ## But it's 'fast enough' for now.
+
+    restart_args = dict(
+        factory=factory_qual,
+        factory_args=args)
+
+    if sock is not None:
+        restart_args['fd'] = sock.fileno()
+
+    if panic:
+        start_delay = args.get('start_delay')
+        if start_delay is None:
+            start_delay = 0.125
+        else:
+            start_delay *= 2
+        restart_args['start_delay'] = start_delay
+
+    env = '/usr/bin/env'
+    os.execve(
+        env,
+        [env, 'spawn', '-z', simplejson.dumps(restart_args)],
+        environ())
+    ## Never gets here!
+
+
 def run_controller(factory_qual, args, sock=None):
     controller_pid = os.getpid()
     print "(%s) **** Controller starting up at %s" % (
         controller_pid, time.asctime())
 
-    config = api.named(factory_qual)(args)
+    try:
+        config = api.named(factory_qual)(args)
+    except:
+        print "(%s) Could not import the wsgi factory! Panic!" % (os.getpid(), )
+        traceback.print_exc()
+        restart_controller(factory_qual, args, sock, panic=True)
+        ## Never gets here!
 
     dev = config.get('dev', False)
     if not dev:
@@ -177,30 +228,24 @@ def run_controller(factory_qual, args, sock=None):
 
     spawn_new_children(sock, factory_qual, args, config)
 
+    start_time = time.time()
+    start_delay = args.get('start_delay')
+
     while True:
         reap_children()
+        ## Random heuristic: If we've been running for 64x longer than the start_delay
+        ## or 5 minutes, whatever is shorter, we can clear the start_delay
+        if start_delay is not None:
+            if time.time() - start_time > min(start_delay * 64, 60 * 5):
+                print "(%s) We've been running OK for a while, clear the exponential backoff" % (
+                    os.getpid(), )
+                del args['start_delay']
+
         if RESTART_CONTROLLER:
             break
 
     if KEEP_GOING:
-        ## In case the installed copy of spawning has changed, 
-        ## execv spawn here so the controller process gets reloaded.
-
-        ## We could somehow check to see if the spawning_controller
-        ## actually is different from the current one and not restart the
-        ## entire process in this case, which would result in faster restarts.
-        ## But it's 'fast enough' for now.
-
-        restart_args = dict(
-            factory=factory_qual,
-            factory_args=args,
-            fd=sock.fileno())
-
-        env = '/usr/bin/env'
-        os.execve(
-            env,
-            [env, 'spawn', '-z', simplejson.dumps(restart_args)],
-            environ())
+        restart_controller(factory_qual, args, sock, panic=PANIC)
         ## Never gets here!
 
 
@@ -253,14 +298,25 @@ def main():
             "(eg my_package.my_module.my_wsgi_application). For the paste factory, it "
             "is the ini file to load. Pass --help for detailed information about available options.")
 
+    sock = None
+
     if options.restart_args:
         restart_args = simplejson.loads(options.restart_args)
         factory = restart_args['factory']
         factory_args = restart_args['factory_args']
-        sock = socket.fromfd(restart_args['fd'], socket.AF_INET, socket.SOCK_STREAM)
-        ## socket.fromfd doesn't result in a socket object that has the same fd.
-        ## The old fd is still open however, so we close it so we don't leak.
-        os.close(restart_args['fd'])
+
+        start_delay = restart_args.get('start_delay')
+        if start_delay is not None:
+            factory_args['start_delay'] = start_delay
+            print "(%s) delaying startup by %s" % (os.getpid(), start_delay)
+            time.sleep(start_delay)
+
+        fd = restart_args.get('fd')
+        if fd is not None:
+            sock = socket.fromfd(restart_args['fd'], socket.AF_INET, socket.SOCK_STREAM)
+            ## socket.fromfd doesn't result in a socket object that has the same fd.
+            ## The old fd is still open however, so we close it so we don't leak.
+            os.close(restart_args['fd'])
     else:
         factory = options.factory
         factory_args = {
@@ -274,7 +330,6 @@ def main():
             'deadman_timeout': options.deadman_timeout,
             'args': positional_args,
         }
-        sock = None
 
     run_controller(factory, factory_args, sock)
 

@@ -7,7 +7,6 @@ import optparse, os, signal, socket, sys, time
 
 from paste.deploy import loadwsgi
 
-from spawning import processpool_parent
 from spawning import reloader_dev
 
 import simplejson
@@ -62,6 +61,7 @@ def serve_from_child(sock, config):
     wsgi_application = api.named(config['app_factory'])(config)
 
     if processpool_workers:
+        from spawning import processpool_parent
         wsgi_application = processpool_parent.ExecuteInProcessPool(config)
     elif threads > 1:
         print "(%s) using %s threads" % (os.getpid(), threads, )
