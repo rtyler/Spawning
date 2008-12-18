@@ -59,7 +59,7 @@ Use a threadpool of size 0, which indicates that eventlet monkeypatching should 
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.8.6',
+    version='0.8.7',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [
