@@ -24,7 +24,7 @@ If an i/o child process dies with an exit code other than 0, the controller deci
 0.8.7:
   - In the svn reloader process, check to see if the controller is still alive, and if not, just exit.
   - Don't hold on to the web port at all in the reloader_svn process.
-  - Add an exponential backoff to the controller's "panic" restart; useful if your code has an ImportError and the children can't even start up. Before spawning would restart as fast as possible; now it backs off the time between restarts.
+  - Add an exponential backoff to the controller's "panic" restart. Before spawning would restart as fast as possible; now it backs off the time between restarts.
   - If we can't import the wsgi app, panic.
   - If we can't fork a child process (out of memory), panic.
 

@@ -76,10 +76,14 @@ def serve_from_child(sock, config):
 
     host, port = sock.getsockname()
 
+    access_log_file = config['access_log_file']
+    if access_log_file is not None:
+        access_log_file = open(access_log_file, 'a')
+
     server_event = coros.event()
     try:
         wsgi.server(
-            sock, wsgi_application, server_event=server_event)
+            sock, wsgi_application, log=access_log_file, server_event=server_event)
     except KeyboardInterrupt:
         pass
     except ExitChild:

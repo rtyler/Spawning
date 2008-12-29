@@ -287,6 +287,8 @@ def main():
         help='When killing an old i/o process because the code has changed, don\'t wait '
         'any longer than the deadman timeout value for the process to gracefully exit. '
         'If all requests have not completed by the deadman timeout, the process will be mercilessly killed.')
+    parser.add_option('-l', '--access-log-file', dest='access_log_file', default=None,
+        help='The file to log access log lines to. If not given, log to stdout.')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
 
@@ -328,6 +330,7 @@ def main():
             'watch': options.watch,
             'dev': not options.release,
             'deadman_timeout': options.deadman_timeout,
+            'access_log_file': options.access_log_file,
             'args': positional_args,
         }
 
