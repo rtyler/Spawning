@@ -120,8 +120,15 @@ def reap_children():
                     break
     else:
         if result:
-            print "(%s) Child %s died with code %s (%s)." % (
-                os.getpid(), pid, result, errno.errorcode.get(result, '?'))
+            signum = result & 0xFF
+            exitcode = (result >> 8) & 0xFF
+
+            if signum:
+                print "(%s) Child died from signal %s with code %s." % (
+                    os.getpid(), signum, exitcode)
+            else:
+                print "(%s) Child %s died with code %s." % (
+                    os.getpid(), pid, exitcode)
             ## The way the code is set up right now it's easier just to panic and
             ## start new children if one of the children dies in a way we didn't expect.
             ## Would probably be better to give this code access to child_pipes

@@ -62,7 +62,8 @@ def watch_forever(urls, pid, interval, files=None):
                 os.kill(pid, signal.SIGHUP)
                 return ## this process is going to die now, no need to keep watching
             else:
-                os._exit(3)
+                print "EXIT??!!!"
+                os._exit(5)
 
         api.sleep(interval)
 

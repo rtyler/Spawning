@@ -81,7 +81,7 @@ def watch_forever(directories, pid, interval):
                 else:
                     print "(%s) Revision changed, dying at %s" % (
                         os.getpid(), time.asctime())
-                    os._exit(3)
+                    os._exit(5)
 
         time.sleep(interval)
 
