@@ -12,6 +12,28 @@ from spawning import reloader_dev
 import simplejson
 
 
+class FigleafCoverage(object):
+    def __init__(self, app):
+        import figleaf
+
+        self.app = app
+        figleaf.start()
+
+    def __call__(self, env, start_response):
+        import figleaf
+        try:
+            import cPickle as pickle
+        except ImportError:
+            import pickle
+
+        if env['PATH_INFO'] == '/_coverage':
+            coverage = figleaf.get_info()
+            s = pickle.dumps(coverage)
+            start_response("200 OK", [('Content-type', 'application/x-pickle')])
+            return [s]
+        return self.app(env, start_response)
+
+
 class ExitChild(Exception):
     pass
 
@@ -60,6 +82,8 @@ def serve_from_child(sock, config):
     threads = config.get('threadpool_workers', 0)
     wsgi_application = api.named(config['app_factory'])(config)
 
+    if config.get('coverage'):
+        wsgi_application = FigleafCoverage(wsgi_application)
     if processpool_workers:
         from spawning import processpool_parent
         wsgi_application = processpool_parent.ExecuteInProcessPool(config)

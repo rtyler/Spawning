@@ -296,6 +296,10 @@ def main():
         'If all requests have not completed by the deadman timeout, the process will be mercilessly killed.')
     parser.add_option('-l', '--access-log-file', dest='access_log_file', default=None,
         help='The file to log access log lines to. If not given, log to stdout.')
+    parser.add_option('-c', '--coverage', dest='coverage', action='store_true',
+        help='If given, gather coverage data from the running program and make the'
+            'coverage report available from the /_coverage url. See the figleaf docs'
+            'for more info: http://darcs.idyll.org/~t/projects/figleaf/doc/')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
 
@@ -338,6 +342,7 @@ def main():
             'dev': not options.release,
             'deadman_timeout': options.deadman_timeout,
             'access_log_file': options.access_log_file,
+            'coverage': options.coverage,
             'args': positional_args,
         }
 
