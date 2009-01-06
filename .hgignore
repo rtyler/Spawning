@@ -1,0 +1,10 @@
+syntax: glob
+*~
+*.pyc
+*.orig
+dist
+*.egg-info
+build
+*.esproj
+.DS_Store
+

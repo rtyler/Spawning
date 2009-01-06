@@ -25,7 +25,8 @@ DEFAULTS = {
     'dev': True,
     'host': '',
     'port': 8080,
-    'deadman_timeout': 120,
+    'deadman_timeout': 10,
+    'max_memory': None,
 }
 
 
@@ -62,9 +63,13 @@ def spawn_new_children(sock, factory_qual, args, config):
 
         if not child_pid:
             os.close(parent_side)
+            basedir, cmdname = os.path.split(spawning_child.__file__)
+            if cmdname.endswith('.pyc'):
+                cmdname = cmdname[:-1]
+            os.chdir(basedir)
             command = [
-                sys.executable,
-                spawning_child.__file__,
+                'python',
+                cmdname,
                 str(parent_pid),
                 str(sock.fileno()),
                 str(child_side),
@@ -217,10 +222,10 @@ def run_controller(factory_qual, args, sock=None):
             if sock is not None:
                 sock.close()
             base = os.path.split(__file__)[0]
+            os.chdir(base)
             args = [
-                sys.executable,
-                os.path.join(
-                    base, 'reloader_svn.py'),
+                'python',
+                'reloader_svn.py',
                 '--pid=' + str(controller_pid),
                 '--dir=' + base,
             ]
@@ -254,6 +259,18 @@ def run_controller(factory_qual, args, sock=None):
     if KEEP_GOING:
         restart_controller(factory_qual, args, sock, panic=PANIC)
         ## Never gets here!
+
+
+def watch_memory(max_memory):
+    process_group = os.getpgrp()
+    while True:
+        time.sleep(MEMORY_WATCH_INTERVAL)
+        out = commands.getoutput('ps -o rss -g %s' % (process_group, ))
+        if sum(int(x) for x in out.split('\n')[1:]) > max_memory:
+            print "(%s) memory watcher restarting processes! Memory exceeded %s" % (
+                os.getpid(), max_memory)
+            os.kill(int(controller_pid), signal.SIGHUP)
+
 
 
 def main():
@@ -300,6 +317,12 @@ def main():
         help='If given, gather coverage data from the running program and make the'
             'coverage report available from the /_coverage url. See the figleaf docs'
             'for more info: http://darcs.idyll.org/~t/projects/figleaf/doc/')
+    parser.add_option('-m', '--max-memory', dest='max_memory', type='int',
+        help='If given, the maximum amount of memory this instance of Spawning '
+            'is allowed to use. If all of the processes started by this Spawning controller '
+            'use more than this amount of memory, send a SIGHUP to the controller '
+            'to get the children to restart. Useful for keeping leaky code running in '
+            'production, if all of your servers are stateless.')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
 
@@ -331,6 +354,28 @@ def main():
             ## The old fd is still open however, so we close it so we don't leak.
             os.close(restart_args['fd'])
     else:
+        ## We're starting up for the first time.
+        ## Become a process group leader.
+        os.setpgrp()
+        ## Fork off the thing that watches memory for this process group.
+        controller_pid = os.getpid()
+        if options.max_memory and not os.fork():
+            env = environ()
+            from spawning import memory_watcher
+            basedir, cmdname = os.path.split(memory_watcher.__file__)
+            if cmdname.endswith('.pyc'):
+                cmdname = cmdname[:-1]
+
+            os.chdir(basedir)
+            command = [
+                'python',
+                cmdname,
+                str(controller_pid),
+                str(options.max_memory)]
+            print "command", command
+            os.execve(sys.executable, command, env)
+
+        print "(%s) Now leading process group %s." % (os.getpid(), os.getpgrp())
         factory = options.factory
         factory_args = {
             'host': options.host,
