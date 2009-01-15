@@ -55,11 +55,46 @@ Run the wsgi application on port 80, with 4 processes each using a threadpool of
 Use a threadpool of size 0, which indicates that eventlet monkeypatching should be performed and wsgi applications should all be called in the same thread. Useful for writing a comet-style application where a lot of requests are simply waiting on a server-side event or internal network io to complete::
 
   % spawn --processes=4 --threads=0 my_wsgi_module.my_comet_application
+
+Additional Useful Arguments
+===========================
+
+-l ACCESS_LOG_FILE, --access-log-file=ACCESS_LOG_FILE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    The file to log access log lines to. If not given, log
+    to stdout. Pass /dev/null to discard logs.
+
+-c, --coverage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    If given, gather coverage data from the running
+    program and make the coverage report available from
+    the /_coverage url. See the figleaf docs for more
+    info: http://darcs.idyll.org/~t/projects/figleaf/doc/
+
+-m MAX_MEMORY, --max-memory=MAX_MEMORY
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    If given, the maximum amount of memory this instance
+    of Spawning is allowed to use. If all of the processes
+    started by this Spawning controller use more than this
+    amount of memory, send a SIGHUP to the controller to
+    get the children to restart.
+
+-a MAX_AGE, --max-age=MAX_AGE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    If given, the maximum amount of time (in seconds) an
+    instance of spawning_child is allowed to run. Once
+    this time limit has expired a SIGHUP will be sent to
+    spawning_controller, causing it to restart all of the
+    child processes.
 """,
     author='Donovan Preston',
     author_email='dsposx@mac.com',
     packages=find_packages(),
-    version='0.9pre',
+    version='0.8.8',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [

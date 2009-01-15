@@ -28,6 +28,16 @@ If an i/o child process dies with an exit code other than 0, the controller deci
   - If we can't import the wsgi app, panic.
   - If we can't fork a child process (out of memory), panic.
 
+0.8.8:
+  - Added --access-log-file command line option to allow writing access logs to someplace other than stdout. Useful for redirecting to /dev/null for speed
+  - Correctly extract the child's exit code and clean up the logging of child exit events.
+  - Add coverage gathering using figleaf if the --coverage command line option is given. When gathering coverage, the figleaf report can be downloaded from the /_coverage url.
+  - Add a --max-memory option to limit the total amount of memory spawning will use. If this is exceeded a SIGHUP will be sent to the controller causing the children to restart.
+  - Add a --max-age option to limit the total amount of time a spawning child is allowed to run. After the time limit is exceeded a SIGHUP will be sent to the controller to cause the children to restart.
+  - Instead of just passing the PYTHONPATH environment variable through to the children, construct the PYTHONPATH from the contents of sys.path.
+  - Instead of just trying to run 'spawn' with /usr/bin/env when restarting, just run sys.executable -m spawning.spawning_controller, making it more likely that the controller will run correctly when restarting.
+  - Add a --verbose option and change the default startup procedure to not log the detailed dictionary of configuration information.
+
 0.7
 ====
 
