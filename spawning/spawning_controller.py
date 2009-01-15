@@ -9,8 +9,6 @@ import simplejson
 import time
 import traceback
 
-from spawning import spawning_child
-
 
 KEEP_GOING = True
 RESTART_CONTROLLER = False
@@ -40,14 +38,15 @@ def spawn_new_children(sock, factory_qual, args, config):
     num_processes = int(config.get('num_processes', 1))
 
     parent_pid = os.getpid()
-    print "(%s) spawning %s children with %s" % (
-        parent_pid, num_processes, spawning_child.__file__)
+    print "(%s) Spawning starting up: %s io processes, %s worker threads, %s worker processes" % (
+        parent_pid, num_processes, config['threadpool_workers'], config['processpool_workers'])
 
-    print "(%s) serving wsgi with configuration:" % (
-        os.getpid(), )
-    prettyconfig = pprint.pformat(config)
-    for line in prettyconfig.split('\n'):
-        print "(%s)\t%s" % (os.getpid(), line)
+    if args.get('verbose'):
+        print "(%s) serving wsgi with configuration:" % (
+            os.getpid(), )
+        prettyconfig = pprint.pformat(config)
+        for line in prettyconfig.split('\n'):
+            print "(%s)\t%s" % (os.getpid(), line)
 
     dev = args.get('dev', False)
     child_pipes = []
@@ -63,13 +62,10 @@ def spawn_new_children(sock, factory_qual, args, config):
 
         if not child_pid:
             os.close(parent_side)
-            basedir, cmdname = os.path.split(spawning_child.__file__)
-            if cmdname.endswith('.pyc'):
-                cmdname = cmdname[:-1]
-            os.chdir(basedir)
+            os.chdir(os.path.dirname(__file__))
             command = [
                 'python',
-                cmdname,
+                '-mspawning.spawning_child',
                 str(parent_pid),
                 str(sock.fileno()),
                 str(child_side),
@@ -194,11 +190,9 @@ def restart_controller(factory_qual, args, sock, panic=False):
             start_delay *= 2
         restart_args['start_delay'] = start_delay
 
-    sys.modules.pop('spawning.spawning_controller', None)
-    from spawning import spawning_controller
     os.execvpe(
         sys.executable,
-        [sys.executable, spawning_controller.__file__, '-z', simplejson.dumps(restart_args)],
+        ['python', '-mspawning.spawning_controller', '-z', simplejson.dumps(restart_args)],
         environ())
     ## Never gets here!
 
@@ -273,9 +267,10 @@ def watch_memory(max_memory):
             os.kill(int(controller_pid), signal.SIGHUP)
 
 
-
 def main():
     parser = optparse.OptionParser(description="Spawning is an easy-to-use and flexible wsgi server. It supports graceful restarting so that your site finishes serving any old requests while starting new processes to handle new requests with the new code. For the simplest usage, simply pass the dotted path to your wsgi application: 'spawn my_module.my_wsgi_app'")
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='Display verbose configuration '
+        'information when starting up or restarting.')
     parser.add_option("-f", "--factory", dest='factory', default='spawning.wsgi_factory.config_factory',
         help="""Dotted path (eg mypackage.mymodule.myfunc) to a callable which takes a dictionary containing the command line arguments and figures out what needs to be done to start the wsgi application. Current valid values are: spawning.wsgi_factory.config_factory, spawning.paste_factory.config_factory, and spawning.django_factory.config_factory. The factory used determines what the required positional command line arguments will be. See the spawning.wsgi_factory module for documentation on how to write a new factory.
         """)
@@ -313,17 +308,16 @@ def main():
         'any longer than the deadman timeout value for the process to gracefully exit. '
         'If all requests have not completed by the deadman timeout, the process will be mercilessly killed.')
     parser.add_option('-l', '--access-log-file', dest='access_log_file', default=None,
-        help='The file to log access log lines to. If not given, log to stdout.')
+        help='The file to log access log lines to. If not given, log to stdout. Pass /dev/null to discard logs.')
     parser.add_option('-c', '--coverage', dest='coverage', action='store_true',
-        help='If given, gather coverage data from the running program and make the'
-            'coverage report available from the /_coverage url. See the figleaf docs'
+        help='If given, gather coverage data from the running program and make the '
+            'coverage report available from the /_coverage url. See the figleaf docs '
             'for more info: http://darcs.idyll.org/~t/projects/figleaf/doc/')
     parser.add_option('-m', '--max-memory', dest='max_memory', type='int', default=0,
         help='If given, the maximum amount of memory this instance of Spawning '
             'is allowed to use. If all of the processes started by this Spawning controller '
             'use more than this amount of memory, send a SIGHUP to the controller '
-            'to get the children to restart. Useful for keeping leaky code running in '
-            'production, if all of your servers are stateless.')
+            'to get the children to restart.')
     parser.add_option('-a', '--max-age', dest='max_age', type='int',
         help='If given, the maximum amount of time (in seconds) an instance of spawning_child '
             'is allowed to run. Once this time limit has expired a SIGHUP will be sent to '
@@ -381,9 +375,9 @@ def main():
             print "command", command
             os.execve(sys.executable, command, env)
 
-        print "(%s) Now leading process group %s." % (os.getpid(), os.getpgrp())
         factory = options.factory
         factory_args = {
+            'verbose': options.verbose,
             'host': options.host,
             'port': options.port,
             'num_processes': options.processes,
