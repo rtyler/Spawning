@@ -32,7 +32,7 @@ DEFAULTS = {
 
 def environ():
     env = os.environ.copy()
-    env['PYTHONPATH'] = os.environ.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = ':'.join(sys.path)
     return env
 
 
@@ -194,10 +194,11 @@ def restart_controller(factory_qual, args, sock, panic=False):
             start_delay *= 2
         restart_args['start_delay'] = start_delay
 
-    env = '/usr/bin/env'
-    os.execve(
-        env,
-        [env, 'spawn', '-z', simplejson.dumps(restart_args)],
+    sys.modules.pop('spawning.spawning_controller', None)
+    from spawning import spawning_controller
+    os.execvpe(
+        sys.executable,
+        [sys.executable, spawning_controller.__file__, '-z', simplejson.dumps(restart_args)],
         environ())
     ## Never gets here!
 
@@ -317,12 +318,16 @@ def main():
         help='If given, gather coverage data from the running program and make the'
             'coverage report available from the /_coverage url. See the figleaf docs'
             'for more info: http://darcs.idyll.org/~t/projects/figleaf/doc/')
-    parser.add_option('-m', '--max-memory', dest='max_memory', type='int',
+    parser.add_option('-m', '--max-memory', dest='max_memory', type='int', default=0,
         help='If given, the maximum amount of memory this instance of Spawning '
             'is allowed to use. If all of the processes started by this Spawning controller '
             'use more than this amount of memory, send a SIGHUP to the controller '
             'to get the children to restart. Useful for keeping leaky code running in '
             'production, if all of your servers are stateless.')
+    parser.add_option('-a', '--max-age', dest='max_age', type='int',
+        help='If given, the maximum amount of time (in seconds) an instance of spawning_child '
+            'is allowed to run. Once this time limit has expired a SIGHUP will be sent to '
+            'spawning_controller, causing it to restart all of the child processes.')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
 
@@ -359,7 +364,7 @@ def main():
         os.setpgrp()
         ## Fork off the thing that watches memory for this process group.
         controller_pid = os.getpid()
-        if options.max_memory and not os.fork():
+        if (options.max_memory or options.max_age) and not os.fork():
             env = environ()
             from spawning import memory_watcher
             basedir, cmdname = os.path.split(memory_watcher.__file__)
@@ -370,6 +375,7 @@ def main():
             command = [
                 'python',
                 cmdname,
+                '--max-age', str(options.max_age),
                 str(controller_pid),
                 str(options.max_memory)]
             print "command", command
