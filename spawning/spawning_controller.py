@@ -372,7 +372,6 @@ def main():
                 '--max-age', str(options.max_age),
                 str(controller_pid),
                 str(options.max_memory)]
-            print "command", command
             os.execve(sys.executable, command, env)
 
         factory = options.factory

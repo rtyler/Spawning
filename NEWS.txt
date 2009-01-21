@@ -38,6 +38,8 @@ If an i/o child process dies with an exit code other than 0, the controller deci
   - Instead of just trying to run 'spawn' with /usr/bin/env when restarting, just run sys.executable -m spawning.spawning_controller, making it more likely that the controller will run correctly when restarting.
   - Add a --verbose option and change the default startup procedure to not log the detailed dictionary of configuration information.
 
+0.8.9: Minor release which provides compatibility with running servers which are using 0.8.7. With 0.8.8, any running servers which are upgraded from 0.8.7->0.8.8 will crash with a KeyError and need to be restarted manually.
+
 0.7
 ====
 
