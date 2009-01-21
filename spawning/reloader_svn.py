@@ -43,9 +43,13 @@ def watch_forever(directories, pid, interval):
             name, _external_url = line.split()
             fulldir = os.path.join(parent, subdirname, name)
             ## Don't keep going into the external in the walk()
-            children.remove(name)
-            directories.append(fulldir)
-            all_svn_repos.add(fulldir)
+            try:
+                children.remove(name)
+            except ValueError:
+                print "*** An entry in svn externals doesn't exist, ignoring:", name
+            else:
+                directories.append(fulldir)
+                all_svn_repos.add(fulldir)
 
     while directories:
         dirname = directories.pop(0)
