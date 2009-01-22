@@ -99,7 +99,7 @@ def serve_from_child(sock, config):
 
     host, port = sock.getsockname()
 
-    access_log_file = config['access_log_file']
+    access_log_file = config.get('access_log_file')
     if access_log_file is not None:
         access_log_file = open(access_log_file, 'a')
 
