@@ -30,7 +30,15 @@ DEFAULTS = {
 
 def environ():
     env = os.environ.copy()
-    env['PYTHONPATH'] = ':'.join(sys.path)
+    new_path = set()
+    for path in sys.path:
+        if os.path.exists(path):
+            new_path.add(path)
+    current_directory = os.path.realpath('.')
+    if current_directory not in new_path:
+        new_path.add(current_directory)
+
+    env['PYTHONPATH'] = ':'.join(new_path)
     return env
 
 
@@ -62,7 +70,6 @@ def spawn_new_children(sock, factory_qual, args, config):
 
         if not child_pid:
             os.close(parent_side)
-            os.chdir(os.path.dirname(__file__))
             command = [
                 'python',
                 '-mspawning.spawning_child',
@@ -268,6 +275,10 @@ def watch_memory(max_memory):
 
 
 def main():
+    current_directory = os.path.realpath('.')
+    if current_directory not in sys.path:
+        sys.path.append(current_directory)
+
     parser = optparse.OptionParser(description="Spawning is an easy-to-use and flexible wsgi server. It supports graceful restarting so that your site finishes serving any old requests while starting new processes to handle new requests with the new code. For the simplest usage, simply pass the dotted path to your wsgi application: 'spawn my_module.my_wsgi_app'")
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='Display verbose configuration '
         'information when starting up or restarting.')
@@ -372,7 +383,6 @@ def main():
                 '--max-age', str(options.max_age),
                 str(controller_pid),
                 str(options.max_memory)]
-            print "command", command
             os.execve(sys.executable, command, env)
 
         factory = options.factory

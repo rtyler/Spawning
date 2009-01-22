@@ -88,7 +88,6 @@ def serve_from_child(sock, config):
         from spawning import processpool_parent
         wsgi_application = processpool_parent.ExecuteInProcessPool(config)
     elif threads > 1:
-        print "(%s) using %s threads" % (os.getpid(), threads, )
         wsgi_application = ExecuteInThreadpool(wsgi_application)
     elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (

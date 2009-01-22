@@ -74,7 +74,7 @@ def watch_forever(directories, pid, interval):
             if new_revision is not None and new_revision != revisions[dirname]:
                 revisions[dirname] = new_revision
                 if pid:
-                    print "(%s) SVN revision changed on %s to %s; Sending SIGHUP to %s at %s" % (
+                    print "(%s) * SVN revision changed on %s to %s; Sending SIGHUP to %s at %s" % (
                         os.getpid(), dirname, new_revision, pid, time.asctime())
                     os.kill(pid, signal.SIGHUP)
                     os._exit(0)

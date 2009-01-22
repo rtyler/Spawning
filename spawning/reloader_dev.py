@@ -52,7 +52,7 @@ def watch_forever(urls, pid, interval, files=None):
                 changed = True
                 last_changed_time = mtime
                 module_mtimes[filename] = mtime
-                print "(%s) File %r changed" % (os.getpid(), filename)
+                print "(%s) * File %r changed" % (os.getpid(), filename)
 
         if not changed and last_changed_time is not None:
             last_changed_time = None
