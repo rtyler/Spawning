@@ -71,8 +71,8 @@ def spawn_new_children(sock, factory_qual, args, config):
         if not child_pid:
             os.close(parent_side)
             command = [
-                'python',
-                '-mspawning.spawning_child',
+                sys.executable,
+                '-c', 'from  spawning import spawning_child;spawning_child.main()',
                 str(parent_pid),
                 str(sock.fileno()),
                 str(child_side),
@@ -199,7 +199,7 @@ def restart_controller(factory_qual, args, sock, panic=False):
 
     os.execvpe(
         sys.executable,
-        ['python', '-mspawning.spawning_controller', '-z', simplejson.dumps(restart_args)],
+        [sys.executable, '-c', 'from  spawning import spawning_controller;spawning_controller.main()', '-z', simplejson.dumps(restart_args)],
         environ())
     ## Never gets here!
 
@@ -226,7 +226,7 @@ def run_controller(factory_qual, args, sock=None):
             base = os.path.split(__file__)[0]
             os.chdir(base)
             args = [
-                'python',
+                sys.executable,
                 'reloader_svn.py',
                 '--pid=' + str(controller_pid),
                 '--dir=' + base,
@@ -378,7 +378,7 @@ def main():
 
             os.chdir(basedir)
             command = [
-                'python',
+                sys.executable,
                 cmdname,
                 '--max-age', str(options.max_age),
                 str(controller_pid),
