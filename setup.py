@@ -93,8 +93,10 @@ Additional Useful Arguments
 """,
     author='Donovan Preston',
     author_email='dsposx@mac.com',
-    packages=find_packages(),
-    version='0.8.10',
+    include_package_data = True,
+    packages = find_packages('src'),
+    package_dir = {'': 'src'},
+    version='0.8.11',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [
