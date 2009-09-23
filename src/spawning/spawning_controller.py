@@ -27,6 +27,9 @@ DEFAULTS = {
     'max_memory': None,
 }
 
+def print_exc(msg="Exception occured!"):
+    print >>sys.stderr, "(%d) %s" % (os.getpid(), msg)
+    traceback.print_exc()
 
 def environ():
     env = os.environ.copy()
@@ -63,8 +66,7 @@ def spawn_new_children(sock, factory_qual, args, config):
         try:
             child_pid = os.fork()
         except:
-            print "(%s) Couldn't fork child! Panic!" % (os.getpid(), )
-            traceback.print_exc()
+            print_exc("Couldn't fork child! Panic!")
             restart_controller(factory_qual, args, sock, panic=True)
             ## Never gets here!
 
@@ -212,8 +214,7 @@ def run_controller(factory_qual, args, sock=None):
     try:
         config = api.named(factory_qual)(args)
     except:
-        print "(%s) Could not import the wsgi factory! Panic!" % (os.getpid(), )
-        traceback.print_exc()
+        print_exc("Couldn't import the WSGI factory! Panic!")
         restart_controller(factory_qual, args, sock, panic=True)
         ## Never gets here!
 
