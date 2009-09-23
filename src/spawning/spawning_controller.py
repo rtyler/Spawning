@@ -131,8 +131,8 @@ def reap_children():
                     break
     else:
         if result:
-            signum = result & 0xFF
-            exitcode = (result >> 8) & 0xFF
+            signum = os.WTERMSIG(result)
+            exitcode = os.WEXITSTATUS(result)
 
             if signum:
                 print "(%s) Child died from signal %s with code %s." % (
