@@ -1,0 +1,4 @@
+include LICENSE.txt Manifest.in NEWS.txt README.txt setup.py
+recursive-include src/spawning *.py
+recursive-include src/Spawning.egg-info *
+recursive-include rc-script *
