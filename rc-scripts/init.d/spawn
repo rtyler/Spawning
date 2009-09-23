@@ -1,0 +1,77 @@
+#!/sbin/runscript
+
+opts="${opts} terminate reload"
+
+depend() {
+	need net
+}
+
+start() {
+	ebegin "Starting ${SVCNAME}"
+	local OPTS
+
+	#[[ -z "${PYTHON_BIN}" ]] && PYTHON_BIN="$(which python)"
+	#if [[ -z "${PYTHON_BIN}" ]]; then
+	#	eerror "couldn't find python binary"
+	#	eend 1
+	#	return
+	#fi
+	[[ -z "${SPAWN_BIN}" ]] && SPAWN_BIN="$(which spawn)"
+	if [[ -z "${SPAWN_BIN}" ]]; then
+		eerror "couldn't find spawn binary"
+		eend 1
+		return
+	fi
+	for CONF_VAR in WSGI_APP HOST PORT ERROR_LOG; do
+		if [[ -z "$(eval echo \$${CONF_VAR})" ]]; then
+			eerror "no ${CONF_VAR} set in configuration"
+			eend 1
+			return
+		fi
+	done
+
+	OPTS="${OPTS} --host ${HOST} --port ${PORT}"
+	if [[ -z "${WORKERS}" ]]; then
+		[[ ! -z "${NUM_THREADS}" ]] && OPTS="${OPTS} --threads ${NUM_THREADS}"
+		[[ ! -z "${NUM_PROCS}" ]] && OPTS="${OPTS} --processes ${NUM_PROCS}"
+	else
+		OPTS="${OPTS} --workers ${WORKERS}"
+	fi
+	OPTS="${OPTS} --access-log ${ACCESS_LOG:-/dev/null}"
+
+	[[ ! -z "${FACTORY}" ]] && OPTS="${OPTS} --factory ${FACTORY}"
+	[[ ! -z "${WATCH}" ]] &&  OPTS="${OPTS} --watch ${WATCH}"
+	[[ ! -z "${MAX_MEMORY}" ]] && OPTS="${OPTS} --max-memory ${MAX_MEMORY}"
+	[[ ! -z "${MAX_AGE}" ]] && OPTS="${OPTS} --max-age ${MAX_AGE}"
+	OPTS="${OPTS} ${EXTRA_OPTS}"
+
+	local PIDFILE="/var/run/${SVCNAME}.pid"
+	start-stop-daemon --start --pidfile "${PIDFILE}" \
+		--exec "${SPAWN_BIN}" --env PYTHONPATH="${PYTHON_LIBS}" -- \
+            --daemonize --pidfile "${PIDFILE}" --chuid "${CHUID}" \
+            --stderr "${ERROR_LOG}" --stdout "${INFO_LOG:-/dev/null}" \
+            ${OPTS} ${WSGI_APP}
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping ${SVCNAME}"
+	local PIDFILE="/var/run/${SVCNAME}.pid"
+	start-stop-daemon --stop --pidfile "${PIDFILE}" --signal INT
+	eend $?
+}
+
+reload() {
+	ebegin "Reloading ${SVCNAME}"
+	local PIDFILE="/var/run/${SVCNAME}.pid"
+	kill -HUP "$(cat ${PIDFILE})"
+	eend $?
+}
+
+terminate() {
+	ebegin "Terminating ${SVCNAME}"
+	local PIDFILE="/var/run/${SVCNAME}.pid"
+	kill "$(cat ${PIDFILE})"
+	rm -f "${PIDFILE}"
+	eend $?
+}

@@ -1,0 +1,48 @@
+# Python Spawning configuration
+
+# The WSGI application you want to spawn.
+WSGI_APP=
+
+# Serve on <HOST>:<PORT>
+HOST=0.0.0.0
+PORT=8080
+
+# A colon-separated list of the Python path.
+#PYTHON_LIBS=/usr/local/lib/my-python-packages
+
+# Where stderr goes, essentially. This file will receive the status output from
+# the workers, as well.
+ERROR_LOG=/var/log/spawning/error.log
+
+# Where stdout goes, essentially.
+#INFO_LOG=/dev/null
+
+# The access log should be pretty obvious.
+#ACCESS_LOG=/dev/null
+
+# Concurrency model. Choose either WORKERS or NUM_THREADS & NUM_PROCS.
+#WORKERS=24
+NUM_THREADS=24
+NUM_PROCS=4
+
+# Maximum age in seconds of a worker before it's restarted.
+#MAX_AGE=
+
+# Maximum memory usage of _all_ workers before it's restarted.
+# Counts resident set size (RSS) in kilobytes, see ps(1).
+#MAX_MEMORY=
+
+# Spawning factory name.
+#FACTORY=
+
+# Watch file. When the file changes, Spawning reloads.
+#WATCH=
+
+# Extra options to pass to Spawning.
+#EXTRA_OPTS=
+
+# Path to Spawning binary.
+#SPAWN_BIN=
+
+# Path to Python binary.
+#PYTHON_BIN=
