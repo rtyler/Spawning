@@ -219,13 +219,26 @@ def run_controller(factory_qual, args, sock=None):
         restart_controller(factory_qual, args, sock, panic=True)
         ## Never gets here!
 
+    pidfile = config.get("pidfile")
+    if pidfile:
+        try:
+            f = open(pidfile, "w")
+        except (IOError, OSError), e:
+            print "(%s) Couldn't write pidfile, going on without it"
+            traceback.print_exc()
+        else:
+            try:
+                f.write("%s\n" % (controller_pid,))
+            finally:
+                f.close()
+
     dev = config.get('dev', False)
     if not dev:
         ## Set up the production reloader that watches the svn revision number.
         if not os.fork():
             if sock is not None:
                 sock.close()
-            base = os.path.split(__file__)[0]
+            base = os.path.dirname(__file__)
             os.chdir(base)
             args = [
                 sys.executable,
@@ -264,6 +277,17 @@ def run_controller(factory_qual, args, sock=None):
         restart_controller(factory_qual, args, sock, panic=PANIC)
         ## Never gets here!
 
+def set_process_owner(spec):
+    import pwd, grp
+    if ":" in spec:
+        user, group = spec.split(":", 1)
+    else:
+        user, group = spec, None
+    if group:
+        os.setgid(grp.getgrnam(group).gr_gid)
+    if user:
+        os.setuid(pwd.getpwnam(user).pw_uid)
+    return user, group
 
 def watch_memory(max_memory):
     process_group = os.getpgrp()
@@ -306,6 +330,17 @@ def main():
             "greenlet-based microthreads, monkeypatching the socket and pipe operations which normally block "
             "to cooperate instead. Note that most blocking database api modules will not "
             "automatically cooperate.")
+    parser.add_option('-d', '--daemonize', dest='daemonize', action='store_true',
+        help="Daemonize after starting children.")
+    parser.add_option('-u', '--chuid', dest='chuid', metavar="ID",
+        help="Change user ID in daemon mode (and group ID if given, "
+             "separate with colon.)")
+    parser.add_option('--pidfile', dest='pidfile', metavar="FILE",
+        help="Write own process ID to FILE in daemon mode.")
+    parser.add_option('--stdout', dest='stdout', metavar="FILE",
+        help="Redirect stdout to FILE in daemon mode.")
+    parser.add_option('--stderr', dest='stderr', metavar="FILE",
+        help="Redirect stderr to FILE in daemon mode.")
     parser.add_option('-w', '--watch', dest='watch', action='append',
         help="Watch the given file's modification time. If the file changes, the web server will "
             'restart gracefully, allowing old requests to complete in the old processes '
@@ -315,7 +350,7 @@ def main():
         help='If --release is passed, reload the server only when the svn '
         'revision changes. Otherwise, reload any time '
         'a loaded module or configuration file changes.')
-    parser.add_option("-d", "--deadman_timeout",
+    parser.add_option("--deadman", "--deadman_timeout",
         type='int', dest='deadman_timeout', default=DEFAULTS['deadman_timeout'],
         help='When killing an old i/o process because the code has changed, don\'t wait '
         'any longer than the deadman timeout value for the process to gracefully exit. '
@@ -367,8 +402,60 @@ def main():
             os.close(restart_args['fd'])
     else:
         ## We're starting up for the first time.
-        ## Become a process group leader.
-        os.setpgrp()
+        if options.daemonize:
+            # Do the daemon dance. Note that this isn't what is considered good
+            # daemonization, because frankly it's convenient to keep the file
+            # descriptiors open (especially when there are prints scattered all
+            # over the codebase.)
+            # What we do instead is fork off, create a new session, fork again.
+            # This leaves the process group in a state without a session
+            # leader.
+            pid = os.fork()
+            if not pid:
+                os.setsid()
+                pid = os.fork()
+                if pid:
+                    os._exit(0)
+            else:
+                os._exit(0)
+            print "(%s) now daemonized" % (os.getpid(),)
+            # Close _all_ open (and othewise!) files.
+            import resource
+            maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+            if maxfd == resource.RLIM_INFINITY:
+                maxfd = 4096
+            for fdnum in xrange(maxfd):
+                try:
+                    os.close(fdnum)
+                except OSError, e:
+                    if e.errno != errno.EBADF:
+                        raise
+            # Remap std{in,out,err}
+            devnull = os.open(os.path.devnull, os.O_RDWR)
+            if devnull != 0:  # stdin
+                os.dup2(devnull, 0)
+            if options.stdout:
+                stdout_fd = os.open(options.stdout, os.O_WRONLY | os.O_CREAT)
+                if stdout_fd != 1:
+                    os.dup2(stdout_fd, 1)
+                    os.close(stdout_fd)
+            else:
+                os.dup2(devnull, 1)
+            if options.stderr:
+                stderr_fd = os.open(options.stderr, os.O_WRONLY | os.O_CREAT)
+                if stderr_fd != 2:
+                    os.dup2(stderr_fd, 2)
+                    os.close(stderr_fd)
+            else:
+                os.dup2(devnull, 2)
+            # Change user & group ID.
+            if options.chuid:
+                user, group = set_process_owner(options.chuid)
+                print "(%s) set user=%s group=%s" % (os.getpid(), user, group)
+        else:
+            # Become a process group leader only if not daemonizing.
+            os.setpgrp()
+
         ## Fork off the thing that watches memory for this process group.
         controller_pid = os.getpid()
         if (options.max_memory or options.max_age) and not os.fork():
@@ -399,6 +486,7 @@ def main():
             'dev': not options.release,
             'deadman_timeout': options.deadman_timeout,
             'access_log_file': options.access_log_file,
+            'pidfile': options.pidfile,
             'coverage': options.coverage,
             'args': positional_args,
         }
