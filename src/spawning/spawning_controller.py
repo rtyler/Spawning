@@ -37,9 +37,8 @@ PANIC = False
 
 
 DEFAULTS = {
-    'num_processes': 1,
-    'threadpool_workers': 10, 
-    'processpool_workers': 0,
+    'num_processes': 4,
+    'threadpool_workers': 4, 
     'watch': [],
     'dev': True,
     'host': '',
@@ -70,8 +69,8 @@ def spawn_new_children(sock, factory_qual, args, config):
     num_processes = int(config.get('num_processes', 1))
 
     parent_pid = os.getpid()
-    print "(%s) Spawning starting up: %s io processes, %s worker threads, %s worker processes" % (
-        parent_pid, num_processes, config['threadpool_workers'], config['processpool_workers'])
+    print "(%s) Spawning starting up: %s io processes, %s worker threads" % (
+        parent_pid, num_processes, config['threadpool_workers'])
 
     if args.get('verbose'):
         print "(%s) serving wsgi with configuration:" % (
@@ -341,9 +340,6 @@ def main():
     parser.add_option("-s", "--processes",
         dest='processes', type='int', default=DEFAULTS['num_processes'],
         help='The number of unix processes to start to use for handling web i/o.')
-    parser.add_option("-o", "--workers",
-        dest='workers', type='int', default=DEFAULTS['processpool_workers'],
-        help='The number of unix worker processes to start to execute the wsgi application in. If defined, this overrides --threads and no posix threads are used.')
     parser.add_option("-t", "--threads",
         dest='threads', type='int', default=DEFAULTS['threadpool_workers'],
         help="The number of posix threads to use for handling web requests. "
@@ -501,7 +497,6 @@ def main():
             'host': options.host,
             'port': options.port,
             'num_processes': options.processes,
-            'processpool_workers': options.workers,
             'threadpool_workers': options.threads,
             'watch': options.watch,
             'dev': not options.release,

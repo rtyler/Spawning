@@ -100,16 +100,13 @@ def deadman_timeout(signum, frame):
 
 
 def serve_from_child(sock, config):
-    processpool_workers = config.get('processpool_workers', 0)
     threads = config.get('threadpool_workers', 0)
     wsgi_application = api.named(config['app_factory'])(config)
 
     if config.get('coverage'):
         wsgi_application = FigleafCoverage(wsgi_application)
-    if processpool_workers:
-        from spawning import processpool_parent
-        wsgi_application = processpool_parent.ExecuteInProcessPool(config)
-    elif threads > 1:
+
+    if threads > 1:
         wsgi_application = ExecuteInThreadpool(wsgi_application)
     elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (
