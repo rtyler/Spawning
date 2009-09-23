@@ -43,8 +43,13 @@ If an i/o child process dies with an exit code other than 0, the controller deci
 0.8.10: When spawning starts up, add the current working directory to sys.path if it is not already there. Also, when calculating the PYTHONPATH to give to the child from sys.path, remove any path which does not exist, preventing setuptools "DistributionNotFound" errors.
 
 0.8.11:
-    - Added Python 2.4 compatibility (kiorky)
-    - Added license headers to all source files (statik)
+    - Added Python 2.4 compatibility. (kiorky)
+    - Added license headers to all source files. (statik)
+    - Print exceptions to stderr instead of stdout. (lericson)
+    - Don't assume every OSError the controller process gets is EINTR. (lericson)
+    - Added simple daemonizing support. (lericson)
+    - Added an OpenRC init script. (lericson)
+    - Added an explicit manifest. (lericson)
 
 0.7
 ====
