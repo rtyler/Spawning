@@ -24,8 +24,13 @@
 if any of the files change.
 """
 
+try:
+	set
+except NameError:
+	import sets
+	set = sets.Set
 
-import optparse, os, sets, signal, sys, tempfile, time
+import optparse, os, signal, sys, tempfile, time
 from os.path import join
 from distutils import sysconfig
 
@@ -41,7 +46,7 @@ def watch_forever(urls, pid, interval, files=None):
     module_mtimes = {}
     last_changed_time = None
     while True:
-        uniques = sets.Set()
+        uniques = set()
 
         if urls:
             for url in urls:
