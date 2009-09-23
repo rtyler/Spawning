@@ -113,8 +113,9 @@ def reap_children():
 
     try:
         pid, result = os.wait()
-    except OSError: # "Interrupted System Call"
-        pass
+    except OSError, e:
+        if e.errno != errno.EINTR:
+            raise
     except KeyboardInterrupt:
         print "(%s) Controller exiting at %s" % (
             os.getpid(), time.asctime())
