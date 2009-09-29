@@ -51,6 +51,10 @@ If an i/o child process dies with an exit code other than 0, the controller deci
     - Added an OpenRC init script. (lericson)
     - Added an explicit manifest. (lericson)
 
+0.8.12:
+    - Remove the processpool implementation added in 0.7 because an equivalent setup can be achieved using controller processes and 1 thread; now we can just talk about the 'number of processes' and 'number of threads' instead of having two levels of different kind of processes when using the processpool. (fzzzy)
+    - Minor release to fix the explicit manifest and OpenRC init script added in the last release. (lericson)
+
 0.7
 ====
 
