@@ -1,77 +1,91 @@
 #!/sbin/runscript
+# Copyright 2009 Ludvig Ericson
+# Distributed under the terms of the 3-clause BSD license
 
-opts="${opts} terminate reload"
+[[ -z "${SPAWN_BIN}" ]] && SPAWN_BIN="$(which spawn)"
+PIDFILE="/var/run/${SVCNAME}.pid"
+
+opts="${opts} reload"
 
 depend() {
 	need net
 }
 
-start() {
-	ebegin "Starting ${SVCNAME}"
-	local OPTS
-
-	#[[ -z "${PYTHON_BIN}" ]] && PYTHON_BIN="$(which python)"
-	#if [[ -z "${PYTHON_BIN}" ]]; then
-	#	eerror "couldn't find python binary"
-	#	eend 1
-	#	return
-	#fi
-	[[ -z "${SPAWN_BIN}" ]] && SPAWN_BIN="$(which spawn)"
-	if [[ -z "${SPAWN_BIN}" ]]; then
-		eerror "couldn't find spawn binary"
-		eend 1
-		return
+check_params() {
+	if [[ "${SVCNAME}" == "spawn" && -z "${I_KNOW}" ]]; then
+		ewarn "It is highly recommended to use a symbolic link for this"
+		ewarn "script and start via that instead. This allows you to run"
+		ewarn "multiple spawn services simultaneously. To do this, simply:"
+		ewarn
+		ewarn "  ln -s /etc/init.d/spawn /etc/init.d/spawn.mysvc"
+		ewarn "  cp /etc/conf.d/spawmn /etc/conf.d/spawn.mysvc"
+		ewarn
+		ewarn "If you don't want to be bothered by this message, set I_KNOW=yes"
+		ewarn "in your configuration file."
+		ewarn
 	fi
+
+	if [[ -z "${SPAWN_BIN}" ]]; then
+		eerror "Couldn't find spawn binary and no explicit"
+		eerror "path set in configuration file."
+		return 1
+	fi
+
 	for CONF_VAR in WSGI_APP HOST PORT ERROR_LOG; do
 		if [[ -z "$(eval echo \$${CONF_VAR})" ]]; then
-			eerror "no ${CONF_VAR} set in configuration"
-			eend 1
-			return
+			eerror "Required configuration variable ${CONF_VAR} not"
+			eerror "set in configuration file."
+			return 1
 		fi
 	done
 
+	if [[ ! -z "${WORKERS}" && -z "${NUM_WORKERS}" ]]; then
+		eerror "WORKERS has changed name to NUM_WORKERS, please update"
+		eerror "your configuration file(s) accordingly."
+		return 1
+	fi
+}
+
+start() {
+	ebegin "Starting ${SVCNAME} on ${HOST}:${PORT}"
+	local OPTS
+
+	check_params || return 1
+
 	OPTS="${OPTS} --host ${HOST} --port ${PORT}"
-	if [[ -z "${WORKERS}" ]]; then
-		[[ ! -z "${NUM_THREADS}" ]] && OPTS="${OPTS} --threads ${NUM_THREADS}"
-		[[ ! -z "${NUM_PROCS}" ]] && OPTS="${OPTS} --processes ${NUM_PROCS}"
-	else
-		OPTS="${OPTS} --workers ${WORKERS}"
+	[[ ! -z "${NUM_PROCS}" ]] && OPTS="${OPTS} --processes ${NUM_PROCS}"
+	if [[ ! -z "${NUM_THREADS}" ]]; then
+		OPTS="${OPTS} --threads ${NUM_THREADS}"
+	elif [[ ! -z "${NUM_WORKERS}" ]]; then
+		OPTS="${OPTS} --workers ${NUM_WORKERS}"
 	fi
 	OPTS="${OPTS} --access-log ${ACCESS_LOG:-/dev/null}"
 
-	[[ ! -z "${FACTORY}" ]] && OPTS="${OPTS} --factory ${FACTORY}"
-	[[ ! -z "${WATCH}" ]] &&  OPTS="${OPTS} --watch ${WATCH}"
-	[[ ! -z "${MAX_MEMORY}" ]] && OPTS="${OPTS} --max-memory ${MAX_MEMORY}"
-	[[ ! -z "${MAX_AGE}" ]] && OPTS="${OPTS} --max-age ${MAX_AGE}"
+	[[ ! -z "${CHUID}" ]]		&& OPTS="${OPTS} --chuid ${CHUID}"
+	[[ ! -z "${FACTORY}" ]]		&& OPTS="${OPTS} --factory ${FACTORY}"
+	[[ ! -z "${WATCH}" ]]		&& OPTS="${OPTS} --watch ${WATCH}"
+	[[ ! -z "${MAX_MEMORY}" ]]	&& OPTS="${OPTS} --max-memory ${MAX_MEMORY}"
+	[[ ! -z "${MAX_AGE}" ]]		&& OPTS="${OPTS} --max-age ${MAX_AGE}"
 	OPTS="${OPTS} ${EXTRA_OPTS}"
 
-	local PIDFILE="/var/run/${SVCNAME}.pid"
 	start-stop-daemon --start --pidfile "${PIDFILE}" \
 		--exec "${SPAWN_BIN}" --env PYTHONPATH="${PYTHON_LIBS}" -- \
-            --daemonize --pidfile "${PIDFILE}" --chuid "${CHUID}" \
-            --stderr "${ERROR_LOG}" --stdout "${INFO_LOG:-/dev/null}" \
-            ${OPTS} ${WSGI_APP}
+			--daemonize --pidfile "${PIDFILE}" \
+			--stderr "${ERROR_LOG}" --stdout "${INFO_LOG:-/dev/null}" \
+			${OPTS} ${WSGI_APP}
 	eend $?
 }
 
 stop() {
+	check_params || return 1
 	ebegin "Stopping ${SVCNAME}"
-	local PIDFILE="/var/run/${SVCNAME}.pid"
 	start-stop-daemon --stop --pidfile "${PIDFILE}" --signal INT
 	eend $?
 }
 
 reload() {
-	ebegin "Reloading ${SVCNAME}"
-	local PIDFILE="/var/run/${SVCNAME}.pid"
+	check_params || return 1
+	ebegin "Telling ${SVCNAME} to reload itself"
 	kill -HUP "$(cat ${PIDFILE})"
-	eend $?
-}
-
-terminate() {
-	ebegin "Terminating ${SVCNAME}"
-	local PIDFILE="/var/run/${SVCNAME}.pid"
-	kill "$(cat ${PIDFILE})"
-	rm -f "${PIDFILE}"
 	eend $?
 }
