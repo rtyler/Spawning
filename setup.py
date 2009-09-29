@@ -115,7 +115,7 @@ Additional Useful Arguments
     include_package_data = True,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    version='0.8.11',
+    version='0.8.12',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [
