@@ -247,16 +247,11 @@ def run_controller(factory_qual, args, sock=None):
 
     pidfile = config.get("pidfile")
     if pidfile:
+        f = open(pidfile, "w")
         try:
-            f = open(pidfile, "w")
-        except (IOError, OSError), e:
-            print "(%s) Couldn't write pidfile, going on without it"
-            traceback.print_exc()
-        else:
-            try:
-                f.write("%s\n" % (controller_pid,))
-            finally:
-                f.close()
+            f.write("%s\n" % (controller_pid,))
+        finally:
+            f.close()
 
     setprocname("spawn: controller " + args["argv_str"])
 
