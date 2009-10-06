@@ -30,6 +30,11 @@ import simplejson
 import time
 import traceback
 
+# For setting the process's title (optional)
+try:
+    from procname import setprocname
+except ImportError, e:
+    setprocname = lambda n: None
 
 KEEP_GOING = True
 RESTART_CONTROLLER = False
@@ -252,6 +257,8 @@ def run_controller(factory_qual, args, sock=None):
                 f.write("%s\n" % (controller_pid,))
             finally:
                 f.close()
+
+    setprocname("spawn: controller " + args["argv_str"])
 
     dev = config.get('dev', False)
     if not dev:
@@ -509,6 +516,7 @@ def main():
             'access_log_file': options.access_log_file,
             'pidfile': options.pidfile,
             'coverage': options.coverage,
+            'argv_str': " ".join(sys.argv[1:]),
             'args': positional_args,
         }
 

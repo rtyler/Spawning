@@ -33,6 +33,11 @@ from spawning import reloader_dev
 
 import simplejson
 
+# For setting the process's title (optional)
+try:
+    from procname import setprocname
+except ImportError, e:
+    setprocname = lambda n: None
 
 class FigleafCoverage(object):
     def __init__(self, app):
@@ -174,6 +179,8 @@ def main():
     controller_pid, httpd_fd, death_fd, factory_qual, factory_args = args
     controller_pid = int(controller_pid)
     config = api.named(factory_qual)(simplejson.loads(factory_args))
+
+    setprocname("spawn: child (%s)" % ", ".join(config.get("args")))
 
     ## Set up the reloader
     if options.reload:
