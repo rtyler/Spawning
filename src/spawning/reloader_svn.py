@@ -27,6 +27,11 @@ to a process when the revision changes.
 
 import commands, optparse, os, signal, sys, tempfile, time
 
+try:
+    from procname import setprocname
+except ImportError, e:
+    setprocname = lambda n: None
+
 
 def get_revision(directory):
     cmd = 'svn info'
@@ -44,8 +49,7 @@ def get_revision(directory):
 
 
 def watch_forever(directories, pid, interval):
-    """
-    """
+    setprocname("spawn: svn reloader")
     if directories is None:
         directories = ['.']
     ## Look for externals

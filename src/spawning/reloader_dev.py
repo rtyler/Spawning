@@ -34,10 +34,20 @@ import optparse, os, signal, sys, tempfile, time
 from os.path import join
 from distutils import sysconfig
 
+try:
+    import json
+except ImportError:
+    import simplejson as json
+else:
+    # Fix up sys.modules so eventlet.jsonhttp works.
+    sys.modules["simplejson"] = json
+
 from eventlet import api, coros, jsonhttp
 
-import simplejson
-
+try:
+    from procname import setprocname
+except ImportError, e:
+    setprocname = lambda n: None
 
 def watch_forever(urls, pid, interval, files=None):
     """

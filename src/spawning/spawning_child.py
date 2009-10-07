@@ -31,7 +31,10 @@ from paste.deploy import loadwsgi
 
 from spawning import reloader_dev
 
-import simplejson
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 # For setting the process's title (optional)
 try:
@@ -178,7 +181,7 @@ def main():
 
     controller_pid, httpd_fd, death_fd, factory_qual, factory_args = args
     controller_pid = int(controller_pid)
-    config = api.named(factory_qual)(simplejson.loads(factory_args))
+    config = api.named(factory_qual)(json.loads(factory_args))
 
     setprocname("spawn: child (%s)" % ", ".join(config.get("args")))
 

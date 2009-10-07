@@ -32,7 +32,10 @@ from eventlet import processes
 
 from spawning import processpool_child
 
-import simplejson
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 
 CHUNK_SIZE = 16384
@@ -59,7 +62,7 @@ class Worker(object):
                 '--environ=%s' % (envfileno, ),
                 '--input=%s' % (r_i, ),
                 '--output=%s' % (w_o, ),
-                simplejson.dumps(config)]
+                json.dumps(config)]
             os.execv(sys.executable, args)
             ## Never gets here
 
@@ -70,7 +73,7 @@ class Worker(object):
         self.mmap.seek(0)
         self.mmap.write(BLANK)
         self.mmap.seek(0)
-        simplejson.dump(
+        json.dump(
             dict([(k, v) for (k, v) in env.iteritems()
             if isinstance(v, basestring)]),
             self.mmap)
@@ -87,7 +90,7 @@ class Worker(object):
             chunklen = int(self.reader.readline(), 16)
             if not started:
                 self.mmap.seek(0)
-                status, headers = simplejson.loads(self.mmap.read(16384))
+                status, headers = json.loads(self.mmap.read(16384))
                 start_response(status, headers)
                 started = True
 

@@ -34,7 +34,10 @@ import traceback
 
 from eventlet import api
 
-import simplejson
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 
 BLANK = ' ' * 16384
@@ -47,7 +50,7 @@ def handle_forever(wsgi_app, fromfile, tofile, envfile):
             chunklen = int(fromfile.readline(), 16)
             if not started:
                 envfile.seek(0)
-                env = simplejson.loads(envfile.read(16384))
+                env = json.loads(envfile.read(16384))
                 inputfile = env['wsgi.input'] = StringIO.StringIO()
                 started = True
 
@@ -62,7 +65,7 @@ def handle_forever(wsgi_app, fromfile, tofile, envfile):
             envfile.seek(0)
             envfile.write(BLANK)
             envfile.seek(0)
-            simplejson.dump([status, headers], envfile)
+            json.dump([status, headers], envfile)
 
         for chunk in wsgi_app(env, _start_response):
             tofile.write("%x\r\n%s\r\n" % (len(chunk), chunk))
@@ -91,7 +94,7 @@ def main():
             sys.argv[0], )
         sys.exit(1)
 
-    config = simplejson.loads(args[0])
+    config = json.loads(args[0])
 
     handle_forever(
         api.named(config['app_factory'])(config),

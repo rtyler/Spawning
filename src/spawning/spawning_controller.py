@@ -26,9 +26,13 @@ from eventlet import api
 import errno, os, optparse, pprint, signal, socket, sys, time
 
 import commands
-import simplejson
 import time
 import traceback
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 # For setting the process's title (optional)
 try:
@@ -105,7 +109,7 @@ def spawn_new_children(sock, factory_qual, args, config):
                 str(sock.fileno()),
                 str(child_side),
                 factory_qual,
-                simplejson.dumps(args)]
+                json.dumps(args)]
 
             if dev and x == 0:
                 command.append('--reload')
@@ -228,7 +232,7 @@ def restart_controller(factory_qual, args, sock, panic=False):
 
     os.execvpe(
         sys.executable,
-        [sys.executable, '-c', 'from  spawning import spawning_controller;spawning_controller.main()', '-z', simplejson.dumps(restart_args)],
+        [sys.executable, '-c', 'from  spawning import spawning_controller;spawning_controller.main()', '-z', json.dumps(restart_args)],
         environ())
     ## Never gets here!
 
@@ -407,7 +411,7 @@ def main():
     sock = None
 
     if options.restart_args:
-        restart_args = simplejson.loads(options.restart_args)
+        restart_args = json.loads(options.restart_args)
         factory = restart_args['factory']
         factory_args = restart_args['factory_args']
 

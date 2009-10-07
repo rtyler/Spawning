@@ -21,6 +21,12 @@
 
 from setuptools import find_packages, setup
 
+install_requires = ['eventlet']
+
+try:
+    __import__("json")
+except ImportError:
+    install_requires.append("simplejson")
 
 setup(
     name='Spawning',
@@ -116,7 +122,7 @@ Additional Useful Arguments
     packages = find_packages('src'),
     package_dir = {'': 'src'},
     version='0.8.11',
-    install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
+    install_requires=install_requires,
     entry_points={
         'console_scripts': [
             'spawn=spawning.spawning_controller:main',
