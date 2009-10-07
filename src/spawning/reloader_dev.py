@@ -38,16 +38,15 @@ try:
     import json
 except ImportError:
     import simplejson as json
-else:
-    # Fix up sys.modules so eventlet.jsonhttp works.
-    sys.modules["simplejson"] = json
 
-from eventlet import api, coros, jsonhttp
+from eventlet import api, coros
 
 try:
     from procname import setprocname
 except ImportError, e:
     setprocname = lambda n: None
+
+from spawning.httpc import jsonhttp
 
 def watch_forever(urls, pid, interval, files=None):
     """
