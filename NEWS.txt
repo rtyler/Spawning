@@ -1,3 +1,11 @@
+0.9
+====
+    - Remove the unnecessary dependency on eventlet.jsonhttp. This makes spawning work with eventlet 0.9, which removed jsonhttp and put it in another library. (fzzzy)
+    - Preserve the order of sys.path. (verterok)
+    - Work around a python deadlock bug with forked child processes (statik)
+
+0.9.1: Fix news file to move entries from 0.8.13 to 0.9 since I decided to call this release 0.9.
+
 0.8
 ====
 
@@ -55,11 +63,6 @@ If an i/o child process dies with an exit code other than 0, the controller deci
     - Remove the processpool implementation added in 0.7 because an equivalent setup can be achieved using controller processes and 1 thread; now we can just talk about the 'number of processes' and 'number of threads' instead of having two levels of different kind of processes when using the processpool. (fzzzy)
     - Minor release to fix the explicit manifest and OpenRC init script added in the last release. (lericson)
     - When running under 2.6 we no longer produce a deprecation warning about the removal of the sets module. (fzzzy)
-
-0.8.13:
-    - Remove the unnecessary dependency on eventlet.jsonhttp. This makes spawning work with eventlet 0.9, which removed jsonhttp and put it in another library. (fzzzy)
-    - Preserve the order of sys.path. (verterok)
-    - Work around a python deadlock bug with forked child processes (statik)
 
 0.7
 ====
