@@ -38,7 +38,7 @@ PANIC = False
 
 DEFAULTS = {
     'num_processes': 4,
-    'threadpool_workers': 4, 
+    'threadpool_workers': 4,
     'watch': [],
     'dev': True,
     'host': '',
@@ -53,12 +53,15 @@ def print_exc(msg="Exception occured!"):
 
 def environ():
     env = os.environ.copy()
-    new_path = set()
+    # to avoid duplicates in the new sys.path
+    revised_paths = set()
+    new_path = list()
     for path in sys.path:
-        if os.path.exists(path):
-            new_path.add(path)
+        if os.path.exists(path) and path not in revised_paths:
+            revised_paths.add(path)
+            new_path.append(path)
     current_directory = os.path.realpath('.')
-    if current_directory not in new_path:
+    if current_directory not in revised_paths:
         new_path.add(current_directory)
 
     env['PYTHONPATH'] = ':'.join(new_path)
@@ -197,7 +200,7 @@ def bind_socket(config):
 
 
 def restart_controller(factory_qual, args, sock, panic=False):
-    ## In case the installed copy of spawning has changed, 
+    ## In case the installed copy of spawning has changed,
     ## execv spawn here so the controller process gets reloaded.
 
     ## We could somehow check to see if the spawning_controller
