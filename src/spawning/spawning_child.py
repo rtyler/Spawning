@@ -181,7 +181,7 @@ def main():
             watching = ''
         print "(%s) reloader watching sys.modules%s" % (os.getpid(), watching)
         api.spawn(
-            reloader_dev.watch_forever, [], controller_pid, 1, watch)
+            reloader_dev.watch_forever, controller_pid, 1, watch)
 
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -56,6 +56,9 @@ If an i/o child process dies with an exit code other than 0, the controller deci
     - Minor release to fix the explicit manifest and OpenRC init script added in the last release. (lericson)
     - When running under 2.6 we no longer produce a deprecation warning about the removal of the sets module. (fzzzy)
 
+0.8.13:
+    - Remove the unnecessary dependency on eventlet.jsonhttp. This makes spawning work with eventlet 0.9, which removed jsonhttp and put it in another library. (fzzzy)
+
 0.7
 ====
 
