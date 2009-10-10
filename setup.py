@@ -25,7 +25,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='Spawning',
-    description='Spawning is a wsgi server which supports multiple processes, multiple threads, non-blocking HTTP io, and automatic graceful upgrading of code.',
+    description='Spawning is a wsgi server which supports multiple processes, multiple threads, green threads, non-blocking HTTP io, and automatic graceful upgrading of code.',
     long_description=file(
         path.join(
             path.dirname(__file__),
