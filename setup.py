@@ -37,7 +37,7 @@ setup(
     include_package_data = True,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    version='0.8.13pre',
+    version='0.9',
     install_requires=['eventlet', 'simplejson', 'PasteDeploy'],
     entry_points={
         'console_scripts': [
