@@ -97,7 +97,7 @@ def spawn_new_children(sock, factory_qual, args, config):
             os.close(parent_side)
             command = [
                 sys.executable,
-                '-c', 'from  spawning import spawning_child;spawning_child.main()',
+                '-c', 'from  spawning import spawning_child;spawning_child.main();import os;os._exit(0)',
                 str(parent_pid),
                 str(sock.fileno()),
                 str(child_side),
