@@ -62,7 +62,7 @@ def environ():
             new_path.append(path)
     current_directory = os.path.realpath('.')
     if current_directory not in revised_paths:
-        new_path.add(current_directory)
+        new_path.append(current_directory)
 
     env['PYTHONPATH'] = ':'.join(new_path)
     return env
