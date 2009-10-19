@@ -34,19 +34,12 @@ import optparse, os, signal, sys, tempfile, time
 from os.path import join
 from distutils import sysconfig
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
 from eventlet import api, coros
 
 try:
     from procname import setprocname
 except ImportError, e:
     setprocname = lambda n: None
-
-from spawning.httpc import jsonhttp
 
 def watch_forever(urls, pid, interval, files=None):
     """
