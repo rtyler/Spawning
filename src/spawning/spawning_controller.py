@@ -46,9 +46,8 @@ PANIC = False
 
 
 DEFAULTS = {
-    'num_processes': 1,
-    'threadpool_workers': 10, 
-    'processpool_workers': 0,
+    'num_processes': 4,
+    'threadpool_workers': 4,
     'watch': [],
     'dev': True,
     'host': '',
@@ -63,13 +62,16 @@ def print_exc(msg="Exception occured!"):
 
 def environ():
     env = os.environ.copy()
-    new_path = set()
+    # to avoid duplicates in the new sys.path
+    revised_paths = set()
+    new_path = list()
     for path in sys.path:
-        if os.path.exists(path):
-            new_path.add(path)
+        if os.path.exists(path) and path not in revised_paths:
+            revised_paths.add(path)
+            new_path.append(path)
     current_directory = os.path.realpath('.')
-    if current_directory not in new_path:
-        new_path.add(current_directory)
+    if current_directory not in revised_paths:
+        new_path.append(current_directory)
 
     env['PYTHONPATH'] = ':'.join(new_path)
     return env
@@ -79,8 +81,8 @@ def spawn_new_children(sock, factory_qual, args, config):
     num_processes = int(config.get('num_processes', 1))
 
     parent_pid = os.getpid()
-    print "(%s) Spawning starting up: %s io processes, %s worker threads, %s worker processes" % (
-        parent_pid, num_processes, config['threadpool_workers'], config['processpool_workers'])
+    print "(%s) Spawning starting up: %s io processes, %s worker threads" % (
+        parent_pid, num_processes, config['threadpool_workers'])
 
     if args.get('verbose'):
         print "(%s) serving wsgi with configuration:" % (
@@ -104,7 +106,7 @@ def spawn_new_children(sock, factory_qual, args, config):
             os.close(parent_side)
             command = [
                 sys.executable,
-                '-c', 'from  spawning import spawning_child;spawning_child.main()',
+                '-c', 'from  spawning import spawning_child;spawning_child.main();import os;os._exit(0)',
                 str(parent_pid),
                 str(sock.fileno()),
                 str(child_side),
@@ -207,7 +209,7 @@ def bind_socket(config):
 
 
 def restart_controller(factory_qual, args, sock, panic=False):
-    ## In case the installed copy of spawning has changed, 
+    ## In case the installed copy of spawning has changed,
     ## execv spawn here so the controller process gets reloaded.
 
     ## We could somehow check to see if the spawning_controller
@@ -347,9 +349,6 @@ def main():
     parser.add_option("-s", "--processes",
         dest='processes', type='int', default=DEFAULTS['num_processes'],
         help='The number of unix processes to start to use for handling web i/o.')
-    parser.add_option("-o", "--workers",
-        dest='workers', type='int', default=DEFAULTS['processpool_workers'],
-        help='The number of unix worker processes to start to execute the wsgi application in. If defined, this overrides --threads and no posix threads are used.')
     parser.add_option("-t", "--threads",
         dest='threads', type='int', default=DEFAULTS['threadpool_workers'],
         help="The number of posix threads to use for handling web requests. "
@@ -507,7 +506,6 @@ def main():
             'host': options.host,
             'port': options.port,
             'num_processes': options.processes,
-            'processpool_workers': options.workers,
             'threadpool_workers': options.threads,
             'watch': options.watch,
             'dev': not options.release,

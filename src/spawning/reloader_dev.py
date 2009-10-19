@@ -41,7 +41,7 @@ try:
 except ImportError, e:
     setprocname = lambda n: None
 
-def watch_forever(urls, pid, interval, files=None):
+def watch_forever(pid, interval, files=None):
     """
     """
     limiter = coros.CoroutinePool(track_events=True)
@@ -50,15 +50,8 @@ def watch_forever(urls, pid, interval, files=None):
     while True:
         uniques = set()
 
-        if urls:
-            for url in urls:
-                limiter.execute(jsonhttp.get, url)
-    
-            for i in range(len(urls)):
-                uniques.update(limiter.wait()['files'])
-        else:
-            uniques.add(join(sysconfig.get_python_lib(), 'easy-install.pth'))
-            uniques.update(list(get_sys_modules_files()))
+        uniques.add(join(sysconfig.get_python_lib(), 'easy-install.pth'))
+        uniques.update(list(get_sys_modules_files()))
 
         if files:
             uniques.update(files)
@@ -106,10 +99,6 @@ def get_sys_modules_files():
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option("-u", "--url",
-        action="append", dest="urls",
-        help="A url to GET for a JSON object with a key 'files' of filenames to check. "
-        "If not given, use the filenames of everything in sys.modules.")
     parser.add_option("-p", "--pid",
         type="int", dest="pid",
         help="A pid to SIGHUP when a monitored file changes. "
@@ -120,7 +109,7 @@ def main():
     options, args = parser.parse_args()
 
     try:
-        watch_forever(options.urls, options.pid, options.interval)
+        watch_forever(options.pid, options.interval)
     except KeyboardInterrupt:
         pass
 

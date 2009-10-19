@@ -76,9 +76,6 @@ def config_factory(args):
     threadpool_workers = ctx.local_conf.get('threadpool_workers', None)
     if threadpool_workers is not None:
         args['threadpool_workers'] = int(threadpool_workers)
-    processpool_workers = ctx.local_conf.get('processpool_workers', None)
-    if processpool_workers is not None:
-        args['processpool_workers'] = int(processpool_workers)
 
     return args
 
@@ -91,7 +88,6 @@ def app_factory(config):
 
 
 def server_factory(global_conf, host, port, *args, **kw):
-    global_conf['mochi_backend_ip'] = '127.0.0.1'
     config_url = 'config:' + os.path.split(global_conf['__file__'])[1]
     relative_to = global_conf['here']
 
