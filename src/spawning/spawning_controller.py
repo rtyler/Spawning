@@ -136,23 +136,27 @@ class Controller(object):
             self.child_pipes[child_pid] = parent_side
 
     def runloop(self):
-        sleep_time = 0.5
         while self.keep_going:
             api.sleep(0.1)
             ## Only start the number of children we need
             number = self.num_processes - len(self.child_pipes.keys()) 
-            if number:
+            if number > 0:
                 self.log.debug('Should start %d new children' % number)
                 self.spawn_children(number=number)
                 continue
 
+            pid, result = None, None
             try:
                 pid, result = os.wait()
             except OSError, e:
                 if e.errno != errno.EINTR:
                     raise
+            except KeyboardInterrupt:
+                self.keep_going = False
+                continue
 
-            self.child_pipes.pop(pid)
+            if pid:
+                self.child_pipes.pop(pid)
             if result:
                 signum = os.WTERMSIG(result)
                 exitcode = os.WEXITSTATUS(result)
@@ -170,6 +174,10 @@ class Controller(object):
                 if e.errno != errno.EPIPE:
                     raise
 
+    def handle_deadlychild(self, *args, **kwargs):
+        self.log.debug('Child indicating it\'s about to die, starting a replacement')
+        self.spawn_children(number=1)
+
     def run(self):
         self.log.info('(%s) *** Controller starting at %s' % (self.controller_pid, 
                 time.asctime()))
@@ -183,11 +191,10 @@ class Controller(object):
         if self.sock is None:
             self.sock = bind_socket(self.config)
 
-        signal.signal(signal.SIGHUP, lambda *args: self.handle_sighup(*args))
-        try:
-            return self.runloop()
-        except KeyboardInterrupt:
-            self.log.info('(%s) *** Controller exiting' % (self.controller_pid))
+        signal.signal(signal.SIGHUP, self.handle_sighup)
+        signal.signal(signal.SIGUSR1, self.handle_deadlychild)
+        self.runloop()
+        self.log.info('(%s) *** Controller exiting' % (self.controller_pid))
 
 
 def spawn_new_children(sock, factory_qual, args, config):

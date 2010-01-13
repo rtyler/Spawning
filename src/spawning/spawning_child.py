@@ -26,7 +26,13 @@
 
 from eventlet import api, coros, greenio, wsgi
 
-import optparse, os, signal, socket, sys, time
+import errno
+import optparse
+import os
+import signal
+import socket
+import sys
+import time
 
 from paste.deploy import loadwsgi
 
@@ -108,7 +114,7 @@ def deadman_timeout(signum, frame):
     os.kill(os.getpid(), signal.SIGKILL)
 
 
-def serve_from_child(sock, config):
+def serve_from_child(sock, config, controller_pid):
     threads = config.get('threadpool_workers', 0)
     wsgi_application = api.named(config['app_factory'])(config)
 
@@ -163,6 +169,14 @@ def serve_from_child(sock, config):
     server = server_event.wait()
 
     last_outstanding = None
+    if server.outstanding_requests:
+        ## Let's tell our parent that we're dying
+        try:
+            os.kill(controller_pid, signal.SIGUSR1)
+        except OSError, e:
+            if not e.errno == errno.ESRCH:
+                raise
+
     while server.outstanding_requests:
         if last_outstanding != server.outstanding_requests:
             print "(%s) %s requests remaining, waiting... (timeout after %s)" % (
@@ -213,7 +227,7 @@ def main():
         socket.fromfd(int(httpd_fd), socket.AF_INET, socket.SOCK_STREAM))
 
     serve_from_child(
-        sock, config)
+        sock, config, controller_pid)
 
 if __name__ == '__main__':
     main()
