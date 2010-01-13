@@ -131,12 +131,21 @@ def serve_from_child(sock, config):
     if access_log_file is not None:
         access_log_file = open(access_log_file, 'a')
 
+    max_age = 0
+    if config.get('max_age'):
+        max_age = int(config.get('max_age'))
+
     server_event = coros.event()
     http_version = config.get('no_keepalive') and 'HTTP/1.0' or 'HTTP/1.1'
     try:
-        wsgi.server(
-            sock, wsgi_application, log=access_log_file, server_event=server_event,
-                    max_http_version=http_version)
+        wsgi_args = (sock, wsgi_application)
+        wsgi_kwargs = {'log' : access_log_file, 'server_event' : server_event, 
+                    'max_http_version' : http_version}
+        if max_age:
+            wsgi_kwargs.update({'timeout_value' : True})
+            api.with_timeout(max_age, wsgi.server, *wsgi_args, **wsgi_kwargs)
+        else:
+            wsgi.server(*wsgi_args, **wsgi_kwargs)
     except KeyboardInterrupt:
         pass
     except ExitChild:
@@ -163,7 +172,6 @@ def serve_from_child(sock, config):
 
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
-
 
 def main():
     parser = optparse.OptionParser()
@@ -206,7 +214,6 @@ def main():
 
     serve_from_child(
         sock, config)
-
 
 if __name__ == '__main__':
     main()

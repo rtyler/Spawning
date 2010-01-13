@@ -487,7 +487,7 @@ def main():
 
         ## Fork off the thing that watches memory for this process group.
         controller_pid = os.getpid()
-        if (options.max_memory or options.max_age) and not os.fork():
+        if options.max_memory and not os.fork():
             env = environ()
             from spawning import memory_watcher
             basedir, cmdname = os.path.split(memory_watcher.__file__)
@@ -517,6 +517,7 @@ def main():
             'pidfile': options.pidfile,
             'coverage': options.coverage,
             'no_keepalive' : options.no_keepalive,
+            'max_age' : options.max_age,
             'argv_str': " ".join(sys.argv[1:]),
             'args': positional_args,
         }
