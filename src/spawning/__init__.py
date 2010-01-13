@@ -22,3 +22,13 @@
 
 """
 """
+
+setproctitle = lambda v: NotImplemented
+
+try:
+    from setproctitle import setproctitle
+except ImportError:
+    try:
+        from procname import setprocname as setproctitle
+    except ImportError:
+        pass

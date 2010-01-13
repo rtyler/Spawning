@@ -36,18 +36,12 @@ import time
 
 from paste.deploy import loadwsgi
 
-from spawning import reloader_dev
+from spawning import setproctitle, reloader_dev
 
 try:
     import json
 except ImportError:
     import simplejson as json
-
-# For setting the process's title (optional)
-try:
-    from procname import setprocname
-except ImportError, e:
-    setprocname = lambda n: None
 
 class FigleafCoverage(object):
     def __init__(self, app):
@@ -205,7 +199,7 @@ def main():
     controller_pid = int(controller_pid)
     config = api.named(factory_qual)(json.loads(factory_args))
 
-    setprocname("spawn: child (%s)" % ", ".join(config.get("args")))
+    setproctitle("spawn: child (%s)" % ", ".join(config.get("args")))
 
     ## Set up the reloader
     if options.reload:

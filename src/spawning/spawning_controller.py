@@ -40,12 +40,7 @@ except ImportError:
     import simplejson as json
 
 from eventlet import api
-
-# For setting the process's title (optional)
-try:
-    from procname import setprocname
-except ImportError, e:
-    setprocname = lambda n: None
+from spawning import setproctitle
 
 KEEP_GOING = True
 RESTART_CONTROLLER = False
@@ -186,7 +181,7 @@ class Controller(object):
             with open(config.get('pidfile'), 'w') as fd:
                 fd.write('%s\n' % self.controller_pid)
 
-        setprocname("spawn: controller " + self.args["argv_str"])
+        setproctitle("spawn: controller " + self.args["argv_str"])
 
         if self.sock is None:
             self.sock = bind_socket(self.config)
@@ -379,7 +374,7 @@ def run_controller(factory_qual, args, sock=None):
         finally:
             f.close()
 
-    setprocname("spawn: controller " + args["argv_str"])
+    setproctitle("spawn: controller " + args["argv_str"])
 
     dev = config.get('dev', False)
     if not dev:
