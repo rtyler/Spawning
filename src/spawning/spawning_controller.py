@@ -140,18 +140,20 @@ class Controller(object):
                 self.spawn_children(number=number)
                 continue
 
+            if not self.child_pipes.keys():
+                ## If we don't yet have children, let's loop
+                continue
+
             pid, result = None, None
             try:
                 pid, result = os.wait()
             except OSError, e:
                 if e.errno != errno.EINTR:
                     raise
-            except KeyboardInterrupt:
-                self.keep_going = False
-                continue
 
-            if pid:
+            if pid and self.child_pipes.get(pid):
                 self.child_pipes.pop(pid)
+
             if result:
                 signum = os.WTERMSIG(result)
                 exitcode = os.WEXITSTATUS(result)
@@ -159,12 +161,17 @@ class Controller(object):
                         pid, signum, exitcode))
 
     def handle_sighup(self, *args, **kwargs):
-        pairs = [(pid, pipe) in self.child_pipes.iteritems()]
-        for pid, pipe in pairs:
+        ''' Pass `no_restart` to prevent restarting the run loop '''
+        self.kill_children()
+        self.child_pipes = {}
+        if not kwargs.get('no_restart', True):
+            self.runloop()
+
+    def kill_children(self):
+        for pid, pipe in self.child_pipes.iteritems():
             try:
                 os.write(pipe, ' ')
                 os.close(pipe)
-                self.child_pipes.pop(pid)
             except OSError, e:
                 if e.errno != errno.EPIPE:
                     raise
@@ -188,7 +195,10 @@ class Controller(object):
 
         signal.signal(signal.SIGHUP, self.handle_sighup)
         signal.signal(signal.SIGUSR1, self.handle_deadlychild)
-        self.runloop()
+        try:
+            self.runloop()
+        except KeyboardInterrupt:
+            self.kill_children()
         self.log.info('(%s) *** Controller exiting' % (self.controller_pid))
 
 
