@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2008, Donovan Preston
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -131,9 +132,11 @@ def serve_from_child(sock, config):
         access_log_file = open(access_log_file, 'a')
 
     server_event = coros.event()
+    http_version = config.get('no_keepalive') and 'HTTP/1.0' or 'HTTP/1.1'
     try:
         wsgi.server(
-            sock, wsgi_application, log=access_log_file, server_event=server_event)
+            sock, wsgi_application, log=access_log_file, server_event=server_event,
+                    max_http_version=http_version)
     except KeyboardInterrupt:
         pass
     except ExitChild:
