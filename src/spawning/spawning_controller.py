@@ -20,13 +20,17 @@
 # FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
-
-from eventlet import api
-
-import errno, os, optparse, pprint, signal, socket, sys, time
+from __future__ import with_statement
 
 import commands
+import errno
+import logging
+import os
+import optparse
+import pprint
+import signal
+import socket
+import sys
 import time
 import traceback
 
@@ -34,6 +38,8 @@ try:
     import json
 except ImportError:
     import simplejson as json
+
+from eventlet import api
 
 # For setting the process's title (optional)
 try:
@@ -76,6 +82,112 @@ def environ():
 
     env['PYTHONPATH'] = ':'.join(new_path)
     return env
+
+class Controller(object):
+    sock = None
+    factory = None
+    args = None
+    config = None
+    child_pipes = None
+    keep_going = True
+    panic = False
+    log = None
+    controller_pid = None
+    num_processes = 0
+
+    def __init__(self, sock, factory, args, **kwargs):
+        self.sock = sock
+        self.factory = factory
+        self.config = api.named(factory)(args)
+        self.args = args
+        self.child_pipes = {}
+        self.log = logging.getLogger('Spawning')
+        if not kwargs.get('log_handler'):
+            self.log.addHandler(logging.StreamHandler())
+        self.log.setLevel(logging.DEBUG)
+        self.controller_pid = os.getpid()
+        self.num_processes = int(self.config.get('num_processes', 0))
+
+    def spawn_children(self, number=1):
+        parent_pid = os.getpid()
+        self.log.debug('Controller.spawn_children(number=%d)' % number)
+
+        for i in range(number):
+            child_side, parent_side = os.pipe()
+            try:
+                child_pid = os.fork()
+            except:
+                print_exc('Could not fork child! Panic!')
+                ### TODO: restart
+
+            if not child_pid:
+                os.close(parent_side)
+                command = (sys.executable, '-c',
+                            'import sys;from spawning import spawning_child; spawning_child.main()',
+                            str(parent_pid),
+                            str(self.sock.fileno()),
+                            str(child_side),
+                            self.factory,
+                            json.dumps(self.args))
+                env = environ()
+                env['EVENTLET_THREADPOOL_SIZE'] = str(self.config.get('threadpool_workers', 0))
+                os.execve(sys.executable, command, env)
+            os.close(child_side)
+            self.child_pipes[child_pid] = parent_side
+
+    def runloop(self):
+        sleep_time = 0.5
+        while self.keep_going:
+            api.sleep(0.1)
+            ## Only start the number of children we need
+            number = self.num_processes - len(self.child_pipes.keys()) 
+            if number:
+                self.log.debug('Should start %d new children' % number)
+                self.spawn_children(number=number)
+                continue
+
+            try:
+                pid, result = os.wait()
+            except OSError, e:
+                if e.errno != errno.EINTR:
+                    raise
+
+            self.child_pipes.pop(pid)
+            if result:
+                signum = os.WTERMSIG(result)
+                exitcode = os.WEXITSTATUS(result)
+                self.log.info('(%s) Child died from signal %s with code %s' % (
+                        pid, signum, exitcode))
+
+    def handle_sighup(self, *args, **kwargs):
+        pairs = [(pid, pipe) in self.child_pipes.iteritems()]
+        for pid, pipe in pairs:
+            try:
+                os.write(pipe, ' ')
+                os.close(pipe)
+                self.child_pipes.pop(pid)
+            except OSError, e:
+                if e.errno != errno.EPIPE:
+                    raise
+
+    def run(self):
+        self.log.info('(%s) *** Controller starting at %s' % (self.controller_pid, 
+                time.asctime()))
+
+        if self.config.get('pidfile'):
+            with open(config.get('pidfile'), 'w') as fd:
+                fd.write('%s\n' % self.controller_pid)
+
+        setprocname("spawn: controller " + self.args["argv_str"])
+
+        if self.sock is None:
+            self.sock = bind_socket(self.config)
+
+        signal.signal(signal.SIGHUP, lambda *args: self.handle_sighup(*args))
+        try:
+            return self.runloop()
+        except KeyboardInterrupt:
+            self.log.info('(%s) *** Controller exiting' % (self.controller_pid))
 
 
 def spawn_new_children(sock, factory_qual, args, config):
@@ -522,7 +634,7 @@ def main():
             'args': positional_args,
         }
 
-    run_controller(factory, factory_args, sock)
+    Controller(sock, factory, factory_args).run()
 
 
 if __name__ == '__main__':
