@@ -185,7 +185,7 @@ class Controller(object):
                 time.asctime()))
 
         if self.config.get('pidfile'):
-            with open(config.get('pidfile'), 'w') as fd:
+            with open(self.config.get('pidfile'), 'w') as fd:
                 fd.write('%s\n' % self.controller_pid)
 
         setproctitle("spawn: controller " + self.args["argv_str"])
