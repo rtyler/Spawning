@@ -138,8 +138,7 @@ def serve_from_child(sock, config, controller_pid):
     server_event = coros.event()
     try:
         wsgi_args = (sock, wsgi_application)
-        wsgi_kwargs = {'log' : access_log_file, 'server_event' : server_event, 
-                    'max_http_version' : http_version}
+        wsgi_kwargs = {'log' : access_log_file, 'server_event' : server_event}
         if config.get('no_keepalive'):
             wsgi_kwargs.update({'keepalive' : False})
         if max_age:
