@@ -136,11 +136,12 @@ def serve_from_child(sock, config, controller_pid):
         max_age = int(config.get('max_age'))
 
     server_event = coros.event()
-    http_version = config.get('no_keepalive') and 'HTTP/1.0' or 'HTTP/1.1'
     try:
         wsgi_args = (sock, wsgi_application)
         wsgi_kwargs = {'log' : access_log_file, 'server_event' : server_event, 
                     'max_http_version' : http_version}
+        if config.get('no_keepalive'):
+            wsgi_kwargs.update({'keepalive' : False})
         if max_age:
             wsgi_kwargs.update({'timeout_value' : True})
             api.with_timeout(max_age, wsgi.server, *wsgi_args, **wsgi_kwargs)
