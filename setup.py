@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2008, Donovan Preston
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +26,7 @@ from setuptools import find_packages, setup
 install_requires = ['eventlet >= 0.9.3']
 
 try:
-    __import__("json")
+    import json
 except ImportError:
     install_requires.append("simplejson")
 
@@ -35,15 +36,17 @@ setup(
     long_description=file(
         path.join(
             path.dirname(__file__),
-            'README.txt'
+            'README.rst'
         )
     ).read(),
     author='Donovan Preston',
     author_email='dsposx@mac.com',
+    maintainer='R. Tyler Ballance',
+    maintainer_email='tyler@monkeypox.org',
     include_package_data = True,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    version='0.9.3pre',
+    version='0.9.3rc1',
     install_requires=install_requires,
     entry_points={
         'console_scripts': [

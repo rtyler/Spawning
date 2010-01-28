@@ -8,6 +8,14 @@
 
 0.9.2: Fix a small typo in the preserve order of sys.path patch from 0.9 that would cause spawning to crash. (schmir)
 
+0.9.3:
+    - Add the ability to disallow HTTP Keepalive via --no-keepalive
+    - Enable "progressive" spawning and reaping of children processes; in
+      effect the parent will receive a signal from children about their
+      impending death and the parent will spin up a new child while the old one
+      expires
+    - SIGHUP to the parent will cause it to cycle children without itself dying
+
 0.8
 ====
 
