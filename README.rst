@@ -2,7 +2,7 @@ Spawning is a fast, easy to use, and flexible HTTP server for hosting python web
 
 Spawning uses eventlet to do non-blocking I/O for http requests and responses. This means the server will scale to a large number of idle keep-alive connections easily. Spawning can be configured to use multiple OS processes and either POSIX threads or eventlet's green threads, which are implemented using greenlet.
 
-Spawning is open source software, licensed under the MIT license. If you wish to contribute to development, please check out the source from http://bitbucket.org/fzzzy/spawning/ and either submit patches or fork spawning and submit a pull request.
+Spawning is open source software, licensed under the MIT license. If you wish to contribute to development, please check out the source from http://github.com/rtyler/Spawning/ and either submit patches or fork spawning and submit a pull request.
 
 Single or Multiple Process
 ==========================
