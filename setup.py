@@ -46,7 +46,7 @@ setup(
     include_package_data = True,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    version='0.9.3rc1',
+    version='0.9.3rc2',
     install_requires=install_requires,
     entry_points={
         'console_scripts': [
