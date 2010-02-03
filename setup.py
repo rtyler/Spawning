@@ -23,7 +23,7 @@ from os import path
 
 from setuptools import find_packages, setup
 
-install_requires = ['eventlet >= 0.9.3']
+install_requires = ['eventlet >= 0.9.3', 'pastedeploy']
 
 try:
     import json
