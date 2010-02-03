@@ -585,17 +585,18 @@ def main():
                         raise
             # Remap std{in,out,err}
             devnull = os.open(os.path.devnull, os.O_RDWR)
+            oflags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
             if devnull != 0:  # stdin
                 os.dup2(devnull, 0)
             if options.stdout:
-                stdout_fd = os.open(options.stdout, os.O_WRONLY | os.O_CREAT)
+                stdout_fd = os.open(options.stdout, oflags)
                 if stdout_fd != 1:
                     os.dup2(stdout_fd, 1)
                     os.close(stdout_fd)
             else:
                 os.dup2(devnull, 1)
             if options.stderr:
-                stderr_fd = os.open(options.stderr, os.O_WRONLY | os.O_CREAT)
+                stderr_fd = os.open(options.stderr, oflags)
                 if stderr_fd != 2:
                     os.dup2(stderr_fd, 2)
                     os.close(stderr_fd)
