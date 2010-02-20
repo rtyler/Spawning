@@ -1,0 +1,124 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          spawning
+# Required-Start:    $all
+# Required-Stop:     $all
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts a Spawning daemon
+# Description:       starts a Spawning daemon
+### END INIT INFO
+
+# Usage instructions:
+# - Copy this file to your /etc/init.d directory:
+#   $ sudo cp spawn.debian /etc/init.d/spawn.mysite
+# - Change the options below in the "Configuration" section.
+#   Spawning arguments currently supported are:
+#   - host (defaults to 127.0.0.1)
+#   - port (defaults to 8080)
+#   - pidfile (managed for you - nothing to do here)
+#   - access-log (defaults to /dev/null)
+#   - stderr (defaults to /dev/null)
+#   - chuid (optional)
+#   - factory (optional)
+#   - processes (optional)
+#   If you have additional arguments to provide (such as 
+#   max-age, watch, workers etc., add them as follows:
+#   EXTRA_ARGS="max-age=1000 --watch=file" etc.
+# - Initialise the script to survive reboots:
+#   $ sudo update-rc.d spawn.mysite defaults
+# - Start your server:
+#   $ sudo /etc/init.d/spawn.mysite start
+
+# This is where your app or settings.py lives
+SITE_DIR="/var/www/mysite/"
+
+# CONFIGURATION
+# Configure your own spawning here
+SPAWNING_NAME="spawning" # label used in status messages - change this
+SPAWNING_BIN="/usr/local/bin/spawn" #Path to Spawning executable
+PROCESSES=2 # Number of processes to spawn
+# Django by default: delete this var to run a WSGI app
+FACTORY="spawning.django_factory.config_factory"
+PORT="8080"
+HOST="127.0.0.1" # listen on loopback by default
+CHUID=""
+ACCESS_LOG="/dev/null"
+ERROR_LOG="/dev/null"
+APP="settings" # Django by default, but put your own app here
+# END CONFIGURATION
+
+# Don't edit this
+PID_DIR="/var/run/spawning"
+PID_FILE="$PID_DIR/$SPAWNING_NAME"
+
+# make sure the PID directory exists
+if [ ! -d $PID_DIR ]; then
+    mkdir $PID_DIR
+fi
+# make sure the access_log file exists
+if [ ! -e $ACCESS_LOG ]; then
+    touch $ACCESS_LOG
+fi
+# make sure the error log file exists
+if [ ! -e $ERROR_LOG ]; then
+    touch $ERROR_LOG
+fi
+
+start() {
+    if [ -f $PID_FILE ]; then
+        if [ -r $PID_FILE ]; then
+            echo -n "$SPAWNING_NAME already running: " && cat $PID_FILE && echo
+            exit 1
+        else
+            echo "$PID_FILE already exists, but is not accessible"
+            exit 1
+        fi
+    fi
+    echo -n "Starting $SPAWNING_NAME on $HOST:$PORT..."
+    ARGS="--host=$HOST --port=$PORT --pidfile=$PID_FILE"
+    ARGS="$ARGS --stderr=$ERROR_LOG --access-log-file=$ACCESS_LOG"
+    [ -n "$PROCESSES" ] && ARGS="$ARGS --processes=$PROCESSES"
+    [ -n "$FACTORY" ]   && ARGS="$ARGS --factory=$FACTORY"
+    [ -n "$CHUID" ] && ARGS="$ARGS --chuid=$CHUID"
+    [ -n "$EXTRA_ARGS" ] && ARGS="$ARGS $EXTRA_ARGS"
+    cd $SITE_DIR && $SPAWNING_BIN $ARGS --daemonize $APP 1> /dev/null
+    echo "Done"
+    return
+}
+
+stop () {
+    [ -f $PID_FILE ] && kill `cat $PID_FILE` && rm $PID_FILE && echo "$SPAWNING_NAME stopped"
+    return
+}
+
+status() {
+    if [ -f "$PID_FILE" ]; then
+        echo -n "$SPAWNING_NAME already running with PIDs: " && cat $PID_FILE && echo
+    else
+        echo "$SPAWNING_NAME not running"
+    fi
+    return
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $NAME (start|stop|status|restart)"
+        exit 1
+        ;;
+esac
+exit $?
