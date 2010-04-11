@@ -70,7 +70,7 @@ start() {
     [ -n "$CHUID" ]      && DAEMON_ARGS="$DAEMON_ARGS --chuid=$CHUID"
     [ -n "$EXTRA_ARGS" ] && DAEMON_ARGS="$DAEMON_ARGS $EXTRA_ARGS"
     DAEMON_ARGS="$DAEMON_ARGS $APP"
-    /sbin/start-stop-daemon --start --background --pidfile=$PIDFILE --chdir $SITE_DIR --exec $SPAWNING_BIN -- $DAEMON_ARGS || return 2
+    /sbin/start-stop-daemon --start --background --make-pidfile --pidfile=$PIDFILE --chdir $SITE_DIR --exec $SPAWNING_BIN -- $DAEMON_ARGS || return 2
     echo $NAME
     return 0
 }
