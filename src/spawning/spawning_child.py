@@ -25,7 +25,6 @@
 """
 
 import eventlet
-import eventlet.api
 import eventlet.event
 import eventlet.greenio
 import eventlet.hubs
@@ -72,7 +71,6 @@ class FigleafCoverage(object):
 class ExitChild(Exception):
     pass
 
-
 def read_pipe_and_die(the_pipe, server_coro):
     try:
         eventlet.hubs.trampoline(the_pipe, read=True)
@@ -83,7 +81,7 @@ def read_pipe_and_die(the_pipe, server_coro):
         os.close(the_pipe)
     except socket.error:
         pass
-    eventlet.api.switch(server_coro, exc=ExitChild)
+    return server_coro.throw(ExitChild)
 
 
 class ExecuteInThreadpool(object):

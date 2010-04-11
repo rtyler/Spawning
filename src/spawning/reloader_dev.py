@@ -34,7 +34,7 @@ import optparse, os, signal, sys, tempfile, time
 from os.path import join
 from distutils import sysconfig
 
-from eventlet import api, coros
+import eventlet
 
 try:
     from procname import setprocname
@@ -44,7 +44,7 @@ except ImportError, e:
 def watch_forever(pid, interval, files=None):
     """
     """
-    limiter = coros.CoroutinePool(track_events=True)
+    limiter = eventlet.GreenPool(track_events=True)
     module_mtimes = {}
     last_changed_time = None
     while True:
@@ -87,7 +87,7 @@ def watch_forever(pid, interval, files=None):
                 print "EXIT??!!!"
                 os._exit(5)
 
-        api.sleep(interval)
+        eventlet.sleep(interval)
 
 
 def get_sys_modules_files():
