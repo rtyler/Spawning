@@ -39,7 +39,8 @@ try:
 except ImportError:
     import simplejson as json
 
-from eventlet import api
+
+import eventlet
 
 import spawning.util
 from spawning import setproctitle
@@ -134,7 +135,7 @@ class Controller(object):
 
     def runloop(self):
         while self.keep_going:
-            api.sleep(0.1)
+            eventlet.sleep(0.1)
             ## Only start the number of children we need
             number = self.num_processes - len(self.child_pipes.keys()) 
             if number > 0:
@@ -319,14 +320,14 @@ def bind_socket(config):
     port = config.get('port', 8080)
     for x in range(8):
         try:
-            sock = api.tcp_listener((host, port))
+            sock = eventlet.listen((host, port))
             break
         except socket.error, e:
             if e[0] != errno.EADDRINUSE:
                 raise
             print "(%s) socket %s:%s already in use, retrying after %s seconds..." % (
                 os.getpid(), host, port, sleeptime)
-            api.sleep(sleeptime)
+            eventlet.sleep(sleeptime)
             sleeptime *= 2
     else:
         print "(%s) could not bind socket %s:%s, dying." % (

@@ -24,7 +24,12 @@
 """spawning_child.py
 """
 
-from eventlet import api, coros, greenio, wsgi
+import eventlet
+import eventlet.api
+import eventlet.event
+import eventlet.greenio
+import eventlet.hubs
+import eventlet.wsgi
 
 import errno
 import optparse
@@ -70,7 +75,7 @@ class ExitChild(Exception):
 
 def read_pipe_and_die(the_pipe, server_coro):
     try:
-        api.trampoline(the_pipe, read=True)
+        eventlet.hubs.trampoline(the_pipe, read=True)
         os.read(the_pipe, 1)
     except socket.error:
         pass
@@ -78,7 +83,7 @@ def read_pipe_and_die(the_pipe, server_coro):
         os.close(the_pipe)
     except socket.error:
         pass
-    api.switch(server_coro, exc=ExitChild)
+    eventlet.api.switch(server_coro, exc=ExitChild)
 
 
 class ExecuteInThreadpool(object):
@@ -134,7 +139,7 @@ def serve_from_child(sock, config, controller_pid):
     if config.get('max_age'):
         max_age = int(config.get('max_age'))
 
-    server_event = coros.event()
+    server_event = eventlet.event.Event()
     http_version = config.get('no_keepalive') and 'HTTP/1.0' or 'HTTP/1.1'
     try:
         wsgi_args = (sock, wsgi_application)
@@ -143,9 +148,10 @@ def serve_from_child(sock, config, controller_pid):
             wsgi_kwargs.update({'keepalive' : False})
         if max_age:
             wsgi_kwargs.update({'timeout_value' : True})
-            api.with_timeout(max_age, wsgi.server, *wsgi_args, **wsgi_kwargs)
+            eventlet.with_timeout(max_age, eventlet.wsgi.server, *wsgi_args,
+                    **wsgi_kwargs)
         else:
-            wsgi.server(*wsgi_args, **wsgi_kwargs)
+            eventlet.wsgi.server(*wsgi_args, **wsgi_kwargs)
     except KeyboardInterrupt:
         pass
     except ExitChild:
@@ -176,7 +182,7 @@ def serve_from_child(sock, config, controller_pid):
             print "(%s) %s requests remaining, waiting... (timeout after %s)" % (
                 os.getpid(), server.outstanding_requests, config['deadman_timeout'])
         last_outstanding = server.outstanding_requests
-        api.sleep(0.1)
+        eventlet.sleep(0.1)
 
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
@@ -209,15 +215,15 @@ def main():
         else:
             watching = ''
         print "(%s) reloader watching sys.modules%s" % (os.getpid(), watching)
-        api.spawn(
+        eventlet.spawn(
             reloader_dev.watch_forever, controller_pid, 1, watch)
 
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    api.spawn(read_pipe_and_die, int(death_fd), api.getcurrent())
+    eventlet.spawn(read_pipe_and_die, int(death_fd), eventlet.getcurrent())
 
     ## Make the socket object from the fd given to us by the controller
-    sock = greenio.GreenSocket(
+    sock = eventlet.greenio.GreenSocket(
         socket.fromfd(int(httpd_fd), socket.AF_INET, socket.SOCK_STREAM))
 
     serve_from_child(
