@@ -34,8 +34,6 @@ import socket
 import sys
 import time
 
-from paste.deploy import loadwsgi
-
 from spawning import setproctitle, reloader_dev
 
 try:
