@@ -446,16 +446,10 @@ def set_process_owner(spec):
         os.setuid(pwd.getpwnam(user).pw_uid)
     return user, group
 
-def watch_memory(max_memory):
-    process_group = os.getpgrp()
-    while True:
-        time.sleep(MEMORY_WATCH_INTERVAL)
-        out = commands.getoutput('ps -o rss -g %s' % (process_group, ))
-        if sum(int(x) for x in out.split('\n')[1:]) > max_memory:
-            print "(%s) memory watcher restarting processes! Memory exceeded %s" % (
-                os.getpid(), max_memory)
-            os.kill(int(controller_pid), signal.SIGHUP)
-
+def start_controller(sock, factory, factory_args):
+    c = Controller(sock, factory, factory_args)
+    installGlobal(c)
+    c.run()
 
 def main():
     current_directory = os.path.realpath('.')
@@ -556,101 +550,108 @@ def main():
             ## socket.fromfd doesn't result in a socket object that has the same fd.
             ## The old fd is still open however, so we close it so we don't leak.
             os.close(restart_args['fd'])
-    else:
-        ## We're starting up for the first time.
-        if options.daemonize:
-            # Do the daemon dance. Note that this isn't what is considered good
-            # daemonization, because frankly it's convenient to keep the file
-            # descriptiors open (especially when there are prints scattered all
-            # over the codebase.)
-            # What we do instead is fork off, create a new session, fork again.
-            # This leaves the process group in a state without a session
-            # leader.
+        return start_controller(sock, factory, factory_args)
+
+    ## We're starting up for the first time.
+    if options.daemonize:
+        # Do the daemon dance. Note that this isn't what is considered good
+        # daemonization, because frankly it's convenient to keep the file
+        # descriptiors open (especially when there are prints scattered all
+        # over the codebase.)
+        # What we do instead is fork off, create a new session, fork again.
+        # This leaves the process group in a state without a session
+        # leader.
+        pid = os.fork()
+        if not pid:
+            os.setsid()
             pid = os.fork()
-            if not pid:
-                os.setsid()
-                pid = os.fork()
-                if pid:
-                    os._exit(0)
-            else:
+            if pid:
                 os._exit(0)
-            print "(%s) now daemonized" % (os.getpid(),)
-            # Close _all_ open (and othewise!) files.
-            import resource
-            maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-            if maxfd == resource.RLIM_INFINITY:
-                maxfd = 4096
-            for fdnum in xrange(maxfd):
-                try:
-                    os.close(fdnum)
-                except OSError, e:
-                    if e.errno != errno.EBADF:
-                        raise
-            # Remap std{in,out,err}
-            devnull = os.open(os.path.devnull, os.O_RDWR)
-            oflags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
-            if devnull != 0:  # stdin
-                os.dup2(devnull, 0)
-            if options.stdout:
-                stdout_fd = os.open(options.stdout, oflags)
-                if stdout_fd != 1:
-                    os.dup2(stdout_fd, 1)
-                    os.close(stdout_fd)
-            else:
-                os.dup2(devnull, 1)
-            if options.stderr:
-                stderr_fd = os.open(options.stderr, oflags)
-                if stderr_fd != 2:
-                    os.dup2(stderr_fd, 2)
-                    os.close(stderr_fd)
-            else:
-                os.dup2(devnull, 2)
-            # Change user & group ID.
-            if options.chuid:
-                user, group = set_process_owner(options.chuid)
-                print "(%s) set user=%s group=%s" % (os.getpid(), user, group)
         else:
-            # Become a process group leader only if not daemonizing.
-            os.setpgrp()
+            os._exit(0)
+        print "(%s) now daemonized" % (os.getpid(),)
+        # Close _all_ open (and othewise!) files.
+        import resource
+        maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+        if maxfd == resource.RLIM_INFINITY:
+            maxfd = 4096
+        for fdnum in xrange(maxfd):
+            try:
+                os.close(fdnum)
+            except OSError, e:
+                if e.errno != errno.EBADF:
+                    raise
+        # Remap std{in,out,err}
+        devnull = os.open(os.path.devnull, os.O_RDWR)
+        oflags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        if devnull != 0:  # stdin
+            os.dup2(devnull, 0)
+        if options.stdout:
+            stdout_fd = os.open(options.stdout, oflags)
+            if stdout_fd != 1:
+                os.dup2(stdout_fd, 1)
+                os.close(stdout_fd)
+        else:
+            os.dup2(devnull, 1)
+        if options.stderr:
+            stderr_fd = os.open(options.stderr, oflags)
+            if stderr_fd != 2:
+                os.dup2(stderr_fd, 2)
+                os.close(stderr_fd)
+        else:
+            os.dup2(devnull, 2)
+        # Change user & group ID.
+        if options.chuid:
+            user, group = set_process_owner(options.chuid)
+            print "(%s) set user=%s group=%s" % (os.getpid(), user, group)
+    else:
+        # Become a process group leader only if not daemonizing.
+        os.setpgrp()
 
-        ## Fork off the thing that watches memory for this process group.
-        controller_pid = os.getpid()
-        if options.max_memory and not os.fork():
-            env = environ()
-            from spawning import memory_watcher
-            basedir, cmdname = os.path.split(memory_watcher.__file__)
-            if cmdname.endswith('.pyc'):
-                cmdname = cmdname[:-1]
+    ## Fork off the thing that watches memory for this process group.
+    controller_pid = os.getpid()
+    if options.max_memory and not os.fork():
+        env = environ()
+        from spawning import memory_watcher
+        basedir, cmdname = os.path.split(memory_watcher.__file__)
+        if cmdname.endswith('.pyc'):
+            cmdname = cmdname[:-1]
 
-            os.chdir(basedir)
-            command = [
-                sys.executable,
-                cmdname,
-                '--max-age', str(options.max_age),
-                str(controller_pid),
-                str(options.max_memory)]
-            os.execve(sys.executable, command, env)
+        os.chdir(basedir)
+        command = [
+            sys.executable,
+            cmdname,
+            '--max-age', str(options.max_age),
+            str(controller_pid),
+            str(options.max_memory)]
+        os.execve(sys.executable, command, env)
 
-        factory = options.factory
-        factory_args = {
-            'verbose': options.verbose,
-            'host': options.host,
-            'port': options.port,
-            'num_processes': options.processes,
-            'threadpool_workers': options.threads,
-            'watch': options.watch,
-            'dev': not options.release,
-            'deadman_timeout': options.deadman_timeout,
-            'access_log_file': options.access_log_file,
-            'pidfile': options.pidfile,
-            'coverage': options.coverage,
-            'no_keepalive' : options.no_keepalive,
-            'max_age' : options.max_age,
-            'argv_str': " ".join(sys.argv[1:]),
-            'args': positional_args,
-        }
+    factory = options.factory
+    factory_args = {
+        'verbose': options.verbose,
+        'host': options.host,
+        'port': options.port,
+        'num_processes': options.processes,
+        'threadpool_workers': options.threads,
+        'watch': options.watch,
+        'dev': not options.release,
+        'deadman_timeout': options.deadman_timeout,
+        'access_log_file': options.access_log_file,
+        'pidfile': options.pidfile,
+        'coverage': options.coverage,
+        'no_keepalive' : options.no_keepalive,
+        'max_age' : options.max_age,
+        'argv_str': " ".join(sys.argv[1:]),
+        'args': positional_args,
+    }
+    start_controller(sock, factory, factory_args)
 
-    Controller(sock, factory, factory_args).run()
+_global_attr_name_ = '_spawning_controller_'
+def installGlobal(controller):
+    setattr(sys, _global_attr_name_, controller)
+
+def globalController():
+    return getattr(sys, _global_attr_name_, None)
 
 
 if __name__ == '__main__':
