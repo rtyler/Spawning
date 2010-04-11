@@ -34,6 +34,7 @@ import socket
 import sys
 import time
 
+import spawning.util
 from spawning import setproctitle, reloader_dev
 
 try:
@@ -108,7 +109,7 @@ def deadman_timeout(signum, frame):
 
 def serve_from_child(sock, config, controller_pid):
     threads = config.get('threadpool_workers', 0)
-    wsgi_application = api.named(config['app_factory'])(config)
+    wsgi_application = spawning.util.named(config['app_factory'])(config)
 
     if config.get('coverage'):
         wsgi_application = FigleafCoverage(wsgi_application)
@@ -196,7 +197,7 @@ def main():
 
     controller_pid, httpd_fd, death_fd, factory_qual, factory_args = args
     controller_pid = int(controller_pid)
-    config = api.named(factory_qual)(json.loads(factory_args))
+    config = spawning.util.named(factory_qual)(json.loads(factory_args))
 
     setproctitle("spawn: child (%s)" % ", ".join(config.get("args")))
 

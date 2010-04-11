@@ -49,8 +49,7 @@ import inspect
 import os
 import time
 
-from eventlet import api
-
+import spawning.util
 
 def config_factory(args):
     args['app_factory'] = 'spawning.wsgi_factory.app_factory'
@@ -60,15 +59,14 @@ def config_factory(args):
     args['source_directories'] = [os.path.split(
         inspect.getfile(
             inspect.getmodule(
-                api.named(args['app']))))[0]]
-
+                spawning.util.named(args['app']))))[0]]
     return args
 
 
 def app_factory(config):
-    app = api.named(config['app'])
+    app = spawning.util.named(config['app'])
     for mid in config['middleware']:
-        app = api.named(mid)(app)
+        app = spawning.util.named(mid)(app)
     return app
 
 

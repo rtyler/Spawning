@@ -40,6 +40,8 @@ except ImportError:
     import simplejson as json
 
 from eventlet import api
+
+import spawning.util
 from spawning import setproctitle
 
 KEEP_GOING = True
@@ -93,7 +95,7 @@ class Controller(object):
     def __init__(self, sock, factory, args, **kwargs):
         self.sock = sock
         self.factory = factory
-        self.config = api.named(factory)(args)
+        self.config = spawning.util.named(factory)(args)
         self.args = args
         self.child_pipes = {}
         self.log = logging.getLogger('Spawning')
@@ -370,7 +372,7 @@ def run_controller(factory_qual, args, sock=None):
         controller_pid, time.asctime())
 
     try:
-        config = api.named(factory_qual)(args)
+        config = spawning.util.named(factory_qual)(args)
     except:
         print_exc("Couldn't import the WSGI factory! Panic!")
         restart_controller(factory_qual, args, sock, panic=True)

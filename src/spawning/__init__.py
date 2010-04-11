@@ -32,3 +32,4 @@ except ImportError:
         from procname import setprocname as setproctitle
     except ImportError:
         pass
+

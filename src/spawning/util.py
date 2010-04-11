@@ -1,4 +1,4 @@
-# Copyright (c) 2008, Donovan Preston
+# Copyright (c) 2010, R. Tyler Ballance
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -20,39 +20,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+def named(name):
+    """Return an object given its name.
 
-import inspect
-import os
-import django.core.handlers.wsgi
-from django.core.servers.basehttp import AdminMediaHandler
+    The name uses a module-like syntax, eg::
 
-import spawning.util
+      os.path.join
 
-def config_factory(args):
-    args['django_settings_module'] = args.get('args', [None])[0]
-    args['app_factory'] = 'spawning.django_factory.app_factory'
+    or::
 
-    ## TODO More directories
-    ## INSTALLED_APPS (list of quals)
-    ## ROOT_URL_CONF (qual)
-    ## MIDDLEWARE_CLASSES (list of quals)
-    ## TEMPLATE_CONTEXT_PROCESSORS (list of quals)
-    settings_module = spawning.util.named(args['django_settings_module'])
-
-    dirs = [os.path.split(
-        inspect.getfile(
-            inspect.getmodule(
-                settings_module)))[0]]
-    args['source_directories'] = dirs
-
-    return args
-
-
-def app_factory(config):
-    os.environ['DJANGO_SETTINGS_MODULE'] = config['django_settings_module']
-
-    app = django.core.handlers.wsgi.WSGIHandler()
-    if config['dev']:
-        app = AdminMediaHandler(app)
-    return app
-
+      mulib.mu.Resource
+    """
+    toimport = name
+    obj = None
+    import_err_strings = []
+    while toimport:
+        try:
+            obj = __import__(toimport)
+            break
+        except ImportError, err:
+            # print 'Import error on %s: %s' % (toimport, err)  # debugging spam
+            import_err_strings.append(err.__str__())
+            toimport = '.'.join(toimport.split('.')[:-1])
+    if obj is None:
+        raise ImportError('%s could not be imported.  Import errors: %r' % (name, import_err_strings))
+    for seg in name.split('.')[1:]:
+        try:
+            obj = getattr(obj, seg)
+        except AttributeError:
+            dirobj = dir(obj)
+            dirobj.sort()
+            raise AttributeError('attribute %r missing from %r (%r) %r.  Import errors: %r' % (
+                seg, obj, dirobj, name, import_err_strings))
+    return obj
