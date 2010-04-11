@@ -122,10 +122,7 @@ def serve_from_child(sock, config, controller_pid):
     elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (
             os.getpid(), )
-        from eventlet import util
-        util.wrap_socket_with_coroutine_socket()
-        #util.wrap_pipes_with_coroutine_pipes()
-        #util.wrap_threading_local_with_coro_local()
+        eventlet.patcher.monkey_patch(all=False, socket=True)
 
     host, port = sock.getsockname()
 
