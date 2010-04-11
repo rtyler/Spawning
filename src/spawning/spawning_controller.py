@@ -42,8 +42,8 @@ except ImportError:
 
 import eventlet
 
+import spawning
 import spawning.util
-from spawning import setproctitle
 
 KEEP_GOING = True
 RESTART_CONTROLLER = False
@@ -191,7 +191,7 @@ class Controller(object):
             with open(self.config.get('pidfile'), 'w') as fd:
                 fd.write('%s\n' % self.controller_pid)
 
-        setproctitle("spawn: controller " + self.args.get('argv_str', ''))
+        spawning.setproctitle("spawn: controller " + self.args.get('argv_str', ''))
 
         if self.sock is None:
             self.sock = bind_socket(self.config)
@@ -387,7 +387,7 @@ def run_controller(factory_qual, args, sock=None):
         finally:
             f.close()
 
-    setproctitle("spawn: controller " + args.get('argv_str', ''))
+    spawning.setproctitle("spawn: controller " + args.get('argv_str', ''))
 
     dev = config.get('dev', False)
     if not dev:
