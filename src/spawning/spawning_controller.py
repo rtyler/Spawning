@@ -41,6 +41,7 @@ except ImportError:
 
 
 import eventlet
+import eventlet.backdoor
 
 import spawning
 import spawning.util
@@ -243,6 +244,7 @@ def start_controller(sock, factory, factory_args):
     c.run()
 
 def main():
+    eventlet.spawn(eventlet.backdoor.backdoor_server, eventlet.listen(('localhost', 3000)))
     current_directory = os.path.realpath('.')
     if current_directory not in sys.path:
         sys.path.append(current_directory)
@@ -305,11 +307,13 @@ def main():
             'is allowed to use. If all of the processes started by this Spawning controller '
             'use more than this amount of memory, send a SIGHUP to the controller '
             'to get the children to restart.')
+    parser.add_option('--no-backdoor', dest='no_backdoor', action='store_true',
+            help='Disable the starting of a backdoor bound to localhost')
     parser.add_option('-a', '--max-age', dest='max_age', type='int',
         help='If given, the maximum amount of time (in seconds) an instance of spawning_child '
             'is allowed to run. Once this time limit has expired a SIGHUP will be sent to '
             'spawning_controller, causing it to restart all of the child processes.')
-    parser.add_option('--no-keepalive', dest='no_keepalive', action='store_true', 
+    parser.add_option('--no-keepalive', dest='no_keepalive', action='store_true',
             help='Disable HTTP/1.1 KeepAlive')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
