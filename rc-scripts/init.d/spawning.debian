@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### BEGIN INIT INFO
-# Provides:          spawn.debian
+# Provides:          spawning.debian
 # Required-Start:    $all
 # Required-Stop:     $all
 # Default-Start:     2 3 4 5
@@ -12,7 +12,7 @@
 
 # Usage instructions:
 # - Copy this file to your /etc/init.d directory:
-#   $ sudo cp spawn.debian /etc/init.d/spawn.mysite
+#   $ sudo cp spawning.debian /etc/init.d/spawning.mysite
 # - Change the options below in the "Configuration" section.
 #   Spawning arguments currently supported are:
 #   - host (defaults to 127.0.0.1)
@@ -26,18 +26,18 @@
 #   max-age, watch, workers etc., add them as follows:
 #   EXTRA_ARGS="max-age=1000 --watch=file" etc.
 # - Initialise the script to survive reboots:
-#   $ sudo update-rc.d spawn.mysite defaults
+#   $ sudo update-rc.d spawning.mysite defaults
 # - Start your server:
-#   $ sudo /etc/init.d/spawn.mysite start
+#   $ sudo /etc/init.d/spawning.mysite start
 
-NAME="spawn.debian" # change debian to your own site
+NAME="spawning.debian" # change debian to your own site
 DESC="Starts a Spawning daemon to run [domain here]"
 # This is where your app or settings.py lives
 SITE_DIR=/var/www/mysite/
 
 # CONFIGURATION - edit this stuff
 # Configure your own spawning here
-SPAWNING_BIN=/usr/local/bin/spawn #Path to Spawning executable
+SPAWNING_BIN=/usr/local/bin/spawning #Path to Spawning executable
 PROCESSES=2 # Number of processes to spawn
 # Django by default: delete this var to run a WSGI app
 FACTORY="spawning.django_factory.config_factory"

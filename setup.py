@@ -50,7 +50,7 @@ setup(
     install_requires=install_requires,
     entry_points={
         'console_scripts': [
-            'spawn=spawning.spawning_controller:main',
+            'spawning=spawning.spawning_controller:main',
         ],
         'paste.server_factory': [
             'main=spawning.paste_factory:server_factory'

@@ -2,7 +2,7 @@
 # Copyright 2009 Ludvig Ericson
 # Distributed under the terms of the 3-clause BSD license
 
-[[ -z "${SPAWN_BIN}" ]] && SPAWN_BIN="$(which spawn)"
+[[ -z "${SPAWN_BIN}" ]] && SPAWN_BIN="$(which spawning)"
 PIDFILE="/var/run/${SVCNAME}.pid"
 
 opts="${opts} reload"
@@ -12,13 +12,13 @@ depend() {
 }
 
 check_params() {
-	if [[ "${SVCNAME}" == "spawn" && -z "${I_KNOW}" ]]; then
+	if [[ "${SVCNAME}" == "spawning" && -z "${I_KNOW}" ]]; then
 		ewarn "It is highly recommended to use a symbolic link for this"
 		ewarn "script and start via that instead. This allows you to run"
 		ewarn "multiple spawn services simultaneously. To do this, simply:"
 		ewarn
-		ewarn "  ln -s /etc/init.d/spawn /etc/init.d/spawn.mysvc"
-		ewarn "  cp /etc/conf.d/spawmn /etc/conf.d/spawn.mysvc"
+		ewarn "  ln -s /etc/init.d/spawning /etc/init.d/spawning.mysvc"
+		ewarn "  cp /etc/conf.d/spawning /etc/conf.d/spawning.mysvc"
 		ewarn
 		ewarn "If you don't want to be bothered by this message, set I_KNOW=yes"
 		ewarn "in your configuration file."
@@ -26,7 +26,7 @@ check_params() {
 	fi
 
 	if [[ -z "${SPAWN_BIN}" ]]; then
-		eerror "Couldn't find spawn binary and no explicit"
+		eerror "Couldn't find spawning binary and no explicit"
 		eerror "path set in configuration file."
 		return 1
 	fi
