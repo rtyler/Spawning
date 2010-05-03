@@ -44,7 +44,7 @@ except ImportError, e:
 def watch_forever(pid, interval, files=None):
     """
     """
-    limiter = eventlet.GreenPool(track_events=True)
+    limiter = eventlet.GreenPool()
     module_mtimes = {}
     last_changed_time = None
     while True:
@@ -55,7 +55,7 @@ def watch_forever(pid, interval, files=None):
 
         if files:
             uniques.update(files)
-
+        ##print uniques
         changed = False
         for filename in uniques:
             try:

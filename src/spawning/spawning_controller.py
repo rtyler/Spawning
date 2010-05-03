@@ -121,13 +121,15 @@ class Controller(object):
 
             if not child_pid:
                 os.close(parent_side)
-                command = (sys.executable, '-c',
-                            'import sys;from spawning import spawning_child; spawning_child.main()',
-                            str(parent_pid),
-                            str(self.sock.fileno()),
-                            str(child_side),
-                            self.factory,
-                            json.dumps(self.args))
+                command = [sys.executable, '-c',
+                    'import sys; from spawning import spawning_child; spawning_child.main()',
+                    str(parent_pid),
+                    str(self.sock.fileno()),
+                    str(child_side),
+                    self.factory,
+                    json.dumps(self.args)]
+                if self.args['reload'] == 'dev':
+                    command.append('--reload')
                 env = environ()
                 env['EVENTLET_THREADPOOL_SIZE'] = str(self.config.get('threadpool_workers', 0))
                 os.execve(sys.executable, command, env)
@@ -287,10 +289,10 @@ def main():
         help="Watch the given file's modification time. If the file changes, the web server will "
             'restart gracefully, allowing old requests to complete in the old processes '
             'while starting new processes with the latest code or configuration.')
-    parser.add_option("-r", "--release",
-        action='store_true', dest='release',
-        help='If --release is passed, reload the server only when the svn '
-        'revision changes. Otherwise, reload any time '
+    ## TODO Hook up the svn reloader again
+    parser.add_option("-r", "--reload",
+        type='str', dest='reload',
+        help='If --reload=dev is passed, reload any time '
         'a loaded module or configuration file changes.')
     parser.add_option("--deadman", "--deadman_timeout",
         type='int', dest='deadman_timeout', default=DEFAULTS['deadman_timeout'],
@@ -430,7 +432,7 @@ def main():
         'num_processes': options.processes,
         'threadpool_workers': options.threads,
         'watch': options.watch,
-        'dev': not options.release,
+        'reload': options.reload,
         'deadman_timeout': options.deadman_timeout,
         'access_log_file': options.access_log_file,
         'pidfile': options.pidfile,
