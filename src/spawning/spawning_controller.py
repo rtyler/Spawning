@@ -138,13 +138,13 @@ class Controller(object):
         while self.keep_going:
             eventlet.sleep(0.1)
             ## Only start the number of children we need
-            number = self.num_processes - len(self.child_pipes.keys()) 
+            number = self.num_processes - len(self.child_pipes)
             if number > 0:
-                self.log.debug('Should start %d new children' % number)
+                self.log.debug('Should start %d new children', number)
                 self.spawn_children(number=number)
                 continue
 
-            if not self.child_pipes.keys():
+            if not self.child_pipes:
                 ## If we don't yet have children, let's loop
                 continue
 
@@ -161,18 +161,17 @@ class Controller(object):
             if result:
                 signum = os.WTERMSIG(result)
                 exitcode = os.WEXITSTATUS(result)
-                self.log.info('(%s) Child died from signal %s with code %s' % (
-                        pid, signum, exitcode))
+                self.log.info('(%s) Child died from signal %s with code %s',
+                              pid, signum, exitcode)
 
     def handle_sighup(self, *args, **kwargs):
         ''' Pass `no_restart` to prevent restarting the run loop '''
         self.kill_children()
-        self.child_pipes = {}
         if not kwargs.get('no_restart', True):
             self.runloop()
 
     def kill_children(self):
-        for pid, pipe in self.child_pipes.iteritems():
+        for pid, pipe in self.child_pipes.items():
             try:
                 os.write(pipe, ' ')
                 os.close(pipe)
@@ -181,8 +180,9 @@ class Controller(object):
                     raise
 
     def handle_deadlychild(self, *args, **kwargs):
-        self.log.debug('Child indicating it\'s about to die, starting a replacement')
-        self.spawn_children(number=1)
+        if self.keep_going:
+            self.log.debug('Child indicating it\'s about to die, starting a replacement')
+            self.spawn_children(number=1)
 
     def run(self):
         self.log.info('(%s) *** Controller starting at %s' % (self.controller_pid,
@@ -202,6 +202,7 @@ class Controller(object):
         try:
             self.runloop()
         except KeyboardInterrupt:
+            self.keep_going = False
             self.kill_children()
         self.log.info('(%s) *** Controller exiting' % (self.controller_pid))
 
