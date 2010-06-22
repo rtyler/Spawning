@@ -84,26 +84,6 @@ def read_pipe_and_die(the_pipe, server_coro):
     return server_coro.throw(ExitChild)
 
 
-class ExecuteInThreadpool(object):
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, env, start_response, exc_info=None):
-        from eventlet import tpool
-        head = []
-        body = []
-        def _start_response(status, headers, exc_info=None):
-            head[:] = status, headers, exc_info
-            return body.append
-
-        def get_list():
-            return list(self.app(env, _start_response))
-
-        result = tpool.execute(get_list)
-        start_response(*head)
-        return result
-
-
 def deadman_timeout(signum, frame):
     print "(%s) !!! Deadman timer expired, killing self with extreme prejudice" % (
         os.getpid(), )
@@ -118,7 +98,11 @@ def serve_from_child(sock, config, controller_pid):
         wsgi_application = FigleafCoverage(wsgi_application)
 
     if threads > 1:
-        wsgi_application = ExecuteInThreadpool(wsgi_application)
+        from eventlet import tpool
+        # proxy calls of the application through tpool, and ensure that
+        # iteration over the iterator goes through the pool as well
+        wsgi_application = tpool.Proxy(wsgi_application,
+                                       autowrap_names=('__call__',))
     elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (
             os.getpid(), )
