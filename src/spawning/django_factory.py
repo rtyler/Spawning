@@ -52,7 +52,7 @@ def app_factory(config):
     os.environ['DJANGO_SETTINGS_MODULE'] = config['django_settings_module']
 
     app = django.core.handlers.wsgi.WSGIHandler()
-    if config['dev']:
+    if config.get('dev'):
         app = AdminMediaHandler(app)
     return app
 
