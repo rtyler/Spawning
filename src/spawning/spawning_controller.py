@@ -247,7 +247,6 @@ def start_controller(sock, factory, factory_args):
     c.run()
 
 def main():
-    eventlet.spawn(eventlet.backdoor.backdoor_server, eventlet.listen(('localhost', 3000)))
     current_directory = os.path.realpath('.')
     if current_directory not in sys.path:
         sys.path.append(current_directory)
@@ -310,8 +309,8 @@ def main():
             'is allowed to use. If all of the processes started by this Spawning controller '
             'use more than this amount of memory, send a SIGHUP to the controller '
             'to get the children to restart.')
-    parser.add_option('--no-backdoor', dest='no_backdoor', action='store_true',
-            help='Disable the starting of a backdoor bound to localhost')
+    parser.add_option('--backdoor', dest='backdoor', action='store_true',
+            help='Start a backdoor bound to localhost:3000')
     parser.add_option('-a', '--max-age', dest='max_age', type='int',
         help='If given, the maximum amount of time (in seconds) an instance of spawning_child '
             'is allowed to run. Once this time limit has expired a SIGHUP will be sent to '
@@ -328,6 +327,12 @@ def main():
             "For the default factory, it is the dotted path to the wsgi application "
             "(eg my_package.my_module.my_wsgi_application). For the paste factory, it "
             "is the ini file to load. Pass --help for detailed information about available options.")
+
+    if options.backdoor:
+        try:
+            eventlet.spawn(eventlet.backdoor.backdoor_server, eventlet.listen(('localhost', 3000)))
+        except Exception, ex:
+            sys.stderr.write('**> Error opening backdoor: %s\n' % ex)
 
     sock = None
 
