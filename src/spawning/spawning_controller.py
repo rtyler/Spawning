@@ -430,6 +430,11 @@ def main():
         os.execve(sys.executable, command, env)
 
     factory = options.factory
+
+    # If you tell me to watch something, I'm going to reload then
+    if options.watch:
+        options.reload = True
+
     factory_args = {
         'verbose': options.verbose,
         'host': options.host,

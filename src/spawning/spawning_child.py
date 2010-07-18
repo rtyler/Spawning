@@ -187,7 +187,7 @@ def main():
     setproctitle("spawn: child (%s)" % ", ".join(config.get("args")))
 
     ## Set up the reloader
-    if options.reload:
+    if config.get('reload'):
         watch = config.get('watch', None)
         if watch:
             watching = ' and %s' % watch
@@ -199,6 +199,8 @@ def main():
 
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    ## Expect a SIGHUP when we want the child to die
+    signal.signal(signal.SIGHUP, lambda *a, **kw: exit(0))
     eventlet.spawn(read_pipe_and_die, int(death_fd), eventlet.getcurrent())
 
     ## Make the socket object from the fd given to us by the controller
