@@ -19,6 +19,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import sys
+
+# Insert src/ into our path so we can pull the version and include it
+sys.path.insert(0, 'src')
+from spawning import __version__
+
 from os import path
 
 from setuptools import find_packages, setup
@@ -46,7 +52,7 @@ setup(
     include_package_data = True,
     packages = find_packages('src'),
     package_dir = {'': 'src'},
-    version='0.9.3rc4',
+    version=__version__,
     install_requires=install_requires,
     entry_points={
         'console_scripts': [

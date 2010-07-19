@@ -251,7 +251,7 @@ def main():
     if current_directory not in sys.path:
         sys.path.append(current_directory)
 
-    parser = optparse.OptionParser(description="Spawning is an easy-to-use and flexible wsgi server. It supports graceful restarting so that your site finishes serving any old requests while starting new processes to handle new requests with the new code. For the simplest usage, simply pass the dotted path to your wsgi application: 'spawn my_module.my_wsgi_app'")
+    parser = optparse.OptionParser(description="Spawning is an easy-to-use and flexible wsgi server. It supports graceful restarting so that your site finishes serving any old requests while starting new processes to handle new requests with the new code. For the simplest usage, simply pass the dotted path to your wsgi application: 'spawn my_module.my_wsgi_app'", version=spawning.__version__)
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', help='Display verbose configuration '
         'information when starting up or restarting.')
     parser.add_option("-f", "--factory", dest='factory', default='spawning.wsgi_factory.config_factory',

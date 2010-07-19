@@ -23,6 +23,8 @@
 """
 """
 
+__version__ = '0.9.3rc4'
+
 setproctitle = lambda v: NotImplemented
 
 try:
