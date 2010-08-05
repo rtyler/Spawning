@@ -89,6 +89,20 @@ def deadman_timeout(signum, frame):
         os.getpid(), )
     os.kill(os.getpid(), signal.SIGKILL)
 
+def tpool_wsgi(app):
+    from eventlet import tpool
+    def tpooled_application(e, s):
+        result = tpool.execute(app, e, s)
+        # return builtins directly
+        if isinstance(result, (list, tuple)):
+            return result
+        else:
+            # iterators might execute code when iterating over them,
+            # so we wrap them in a Proxy object so every call to
+            # next() goes through tpool
+            return tpool.Proxy(result)
+    return tpooled_application
+
 
 def serve_from_child(sock, config, controller_pid):
     threads = config.get('threadpool_workers', 0)
@@ -98,11 +112,8 @@ def serve_from_child(sock, config, controller_pid):
         wsgi_application = FigleafCoverage(wsgi_application)
 
     if threads > 1:
-        from eventlet import tpool
-        # proxy calls of the application through tpool, and ensure that
-        # iteration over the iterator goes through the pool as well
-        wsgi_application = tpool.Proxy(wsgi_application,
-                                       autowrap_names=('__call__',))
+        # proxy calls of the application through tpool
+        wsgi_application = tpool_wsgi(wsgi_application)
     elif threads != 1:
         print "(%s) not using threads, installing eventlet cooperation monkeypatching" % (
             os.getpid(), )
