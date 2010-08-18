@@ -29,12 +29,12 @@ from os import path
 
 from setuptools import find_packages, setup
 
-install_requires = ['eventlet >= 0.9.7',]
+install_requires = ['eventlet >= 0.9.10',]
 
 try:
     import json
 except ImportError:
-    install_requires.append("simplejson")
+    install_requires.append('simplejson')
 
 setup(
     name='Spawning',
