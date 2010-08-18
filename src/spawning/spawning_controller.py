@@ -158,7 +158,10 @@ class Controller(object):
                     raise
 
             if pid and self.child_pipes.get(pid):
-                self.child_pipes.pop(pid)
+                try:
+                    os.close(self.child_pipes.pop(pid))
+                except (IOError, OSError):
+                    pass
 
             if result:
                 signum = os.WTERMSIG(result)
