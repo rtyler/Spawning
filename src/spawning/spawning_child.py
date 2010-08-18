@@ -94,7 +94,7 @@ def tpool_wsgi(app):
     def tpooled_application(e, s):
         result = tpool.execute(app, e, s)
         # return builtins directly
-        if isinstance(result, (list, tuple)):
+        if isinstance(result, (basestring, list, tuple)):
             return result
         else:
             # iterators might execute code when iterating over them,
