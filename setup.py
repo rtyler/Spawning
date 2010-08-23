@@ -29,7 +29,7 @@ from os import path
 
 from setuptools import find_packages, setup
 
-install_requires = ['eventlet >= 0.9.10',]
+install_requires = ['eventlet >= 0.9.12',]
 
 try:
     import json
