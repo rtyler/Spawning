@@ -16,6 +16,24 @@
       expires
     - SIGHUP to the parent will cause it to cycle children without itself dying
 
+0.9.4:
+    - Script for spawning renamed from "spawn" to "spawning" to avoid confusion
+    - Use O_APPEND when opening files when daemonizing
+    - Debian/Ubuntu init.d scripts using start-stop-daemon
+    - spawning.util module added to house methods that don't belong elsewhere
+    - Update Spawning to use newer Eventlet API calls
+    - Properly handle errors when calling `setproctitle`
+    - Allow optional `eventlet.backdoor` bound to localhost
+    - Operate more cleanly with Eventlet's websockets support with changes to
+      eventlet.tpool integration
+    - Avoid passing certain objects through `eventlet.tpool.Proxy` when using
+      threads for a performance gain
+    - Prevent leaking pipes when handling children processes
+
+
+
+
+
 0.8
 ====
 
@@ -73,6 +91,10 @@ If an i/o child process dies with an exit code other than 0, the controller deci
     - Remove the processpool implementation added in 0.7 because an equivalent setup can be achieved using controller processes and 1 thread; now we can just talk about the 'number of processes' and 'number of threads' instead of having two levels of different kind of processes when using the processpool. (fzzzy)
     - Minor release to fix the explicit manifest and OpenRC init script added in the last release. (lericson)
     - When running under 2.6 we no longer produce a deprecation warning about the removal of the sets module. (fzzzy)
+
+
+
+
 
 0.7
 ====
