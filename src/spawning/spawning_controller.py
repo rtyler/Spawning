@@ -132,7 +132,8 @@ class Controller(object):
                     command.append('--reload')
                 env = environ()
                 tpool_size = int(self.config.get('threadpool_workers', 0))
-                if not tpool_size == 0:
+                assert tpool_size >= 0, (tpool_size, 'Cannot have a negative --threads argument')
+                if not tpool_size in (0, 1):
                     env['EVENTLET_THREADPOOL_SIZE'] = str(tpool_size)
                 os.execve(sys.executable, command, env)
             os.close(child_side)
