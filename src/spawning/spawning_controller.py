@@ -131,7 +131,9 @@ class Controller(object):
                 if self.args['reload'] == 'dev':
                     command.append('--reload')
                 env = environ()
-                env['EVENTLET_THREADPOOL_SIZE'] = str(self.config.get('threadpool_workers', 0))
+                tpool_size = int(self.config.get('threadpool_workers', 0))
+                if not tpool_size == 0:
+                    env['EVENTLET_THREADPOOL_SIZE'] = str(tpool_size)
                 os.execve(sys.executable, command, env)
             os.close(child_side)
             self.child_pipes[child_pid] = parent_side
