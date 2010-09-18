@@ -86,26 +86,26 @@ class URLInterceptor(object):
         return self.app(env, start_response)
 
 
-class FigleafCoverage(object):
-    def __init__(self, app):
-        import figleaf
+class FigleafCoverage(URLInterceptor):
 
-        self.app = app
+    paths = ['/_coverage']
+
+    def __init__(self, app):
+        URLInterceptor.__init__(self, app)
+        import figleaf
         figleaf.start()
 
-    def __call__(self, env, start_response):
+    def _intercept(self, env, start_response):
         import figleaf
         try:
             import cPickle as pickle
         except ImportError:
             import pickle
 
-        if env['PATH_INFO'] == '/_coverage':
-            coverage = figleaf.get_info()
-            s = pickle.dumps(coverage)
-            start_response("200 OK", [('Content-type', 'application/x-pickle')])
-            return [s]
-        return self.app(env, start_response)
+        coverage = figleaf.get_info()
+        s = pickle.dumps(coverage)
+        start_response("200 OK", [('Content-type', 'application/x-pickle')])
+        return [s]
 
 
 class SystemInfo(URLInterceptor):
@@ -170,7 +170,7 @@ def serve_from_child(sock, config, controller_pid):
 
     if config.get('coverage'):
         wsgi_application = FigleafCoverage(wsgi_application)
-    elif config.get('sysinfo'):
+    if config.get('sysinfo'):
         wsgi_application = SystemInfo(wsgi_application)
 
     if threads > 1:
