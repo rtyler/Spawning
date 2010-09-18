@@ -310,6 +310,9 @@ def main():
         help='If given, gather coverage data from the running program and make the '
             'coverage report available from the /_coverage url. See the figleaf docs '
             'for more info: http://darcs.idyll.org/~t/projects/figleaf/doc/')
+    parser.add_option('--sysinfo', dest='sysinfo', action='store_true',
+        help='If given, gather system information data and make the '
+            'report available from the /_sysinfo url.')
     parser.add_option('-m', '--max-memory', dest='max_memory', type='int', default=0,
         help='If given, the maximum amount of memory this instance of Spawning '
             'is allowed to use. If all of the processes started by this Spawning controller '
@@ -453,6 +456,7 @@ def main():
         'access_log_file': options.access_log_file,
         'pidfile': options.pidfile,
         'coverage': options.coverage,
+        'sysinfo': options.sysinfo,
         'no_keepalive' : options.no_keepalive,
         'max_age' : options.max_age,
         'argv_str': " ".join(sys.argv[1:]),

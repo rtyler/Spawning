@@ -46,6 +46,46 @@ try:
 except ImportError:
     import simplejson as json
 
+
+class URLInterceptor(object):
+    """
+    Intercepts one or more paths.
+    """
+
+    paths = []
+
+    def __init__(self, app, paths=[]):
+        """
+        Creates an instance.
+
+        :Parameters:
+           - `app`: Application to fall through to
+        """
+        self.app = app
+
+    def _intercept(self, env, start_response):
+        """
+        Executes business logic.
+
+        :Parameters:
+           - `env`: environment information
+           - `start_response`: wsgi response function
+        """
+        raise NotImplementedError('_intercept must be overridden')
+
+    def __call__(self, env, start_response):
+        """
+        Dispatches input to the proper method.
+
+        :Parameters:
+           - `env`: environment information
+           - `start_response`: wsgi response function
+        """
+        if env['PATH_INFO'] in self.paths:
+            return self._intercept(env, start_response)
+        return self.app(env, start_response)
+
+
 class FigleafCoverage(object):
     def __init__(self, app):
         import figleaf
@@ -66,6 +106,26 @@ class FigleafCoverage(object):
             start_response("200 OK", [('Content-type', 'application/x-pickle')])
             return [s]
         return self.app(env, start_response)
+
+
+class SystemInfo(URLInterceptor):
+    """
+    Intercepts /_sysinfo path and returns json data.
+    """
+
+    paths = ['/_sysinfo']
+
+    def _intercept(self, env, start_response):
+        """
+        Executes business logic.
+
+        :Parameters:
+           - `env`: environment information
+           - `start_response`: wsgi response function
+        """
+        import spawning.util.system
+        start_response("200 OK", [('Content-type', 'application/json')])
+        return [json.dumps(spawning.util.system.System())]
 
 
 class ExitChild(Exception):
@@ -110,6 +170,8 @@ def serve_from_child(sock, config, controller_pid):
 
     if config.get('coverage'):
         wsgi_application = FigleafCoverage(wsgi_application)
+    elif config.get('sysinfo'):
+        wsgi_application = SystemInfo(wsgi_application)
 
     if threads > 1:
         # proxy calls of the application through tpool
