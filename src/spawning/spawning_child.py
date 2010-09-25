@@ -221,13 +221,12 @@ def serve_from_child(sock, config, controller_pid):
     server = server_event.wait()
 
     last_outstanding = None
-    if server.outstanding_requests:
-        ## Let's tell our parent that we're dying
-        try:
-            os.kill(controller_pid, signal.SIGUSR1)
-        except OSError, e:
-            if not e.errno == errno.ESRCH:
-                raise
+    ## Let's tell our parent that we're dying
+    try:
+        os.kill(controller_pid, signal.SIGUSR1)
+    except OSError, e:
+        if not e.errno == errno.ESRCH:
+            raise
 
     while server.outstanding_requests:
         if last_outstanding != server.outstanding_requests:
@@ -238,6 +237,9 @@ def serve_from_child(sock, config, controller_pid):
 
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
+
+def child_sighup(*args, **kwargs):
+    exit(0)
 
 def main():
     parser = optparse.OptionParser()
@@ -273,7 +275,7 @@ def main():
     ## The parent will catch sigint and tell us to shut down
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     ## Expect a SIGHUP when we want the child to die
-    signal.signal(signal.SIGHUP, lambda *a, **kw: exit(0))
+    signal.signal(signal.SIGHUP, child_sighup)
     eventlet.spawn(read_pipe_and_die, int(death_fd), eventlet.getcurrent())
 
     ## Make the socket object from the fd given to us by the controller

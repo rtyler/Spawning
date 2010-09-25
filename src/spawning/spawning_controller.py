@@ -119,7 +119,7 @@ class Controller(object):
                 print_exc('Could not fork child! Panic!')
                 ### TODO: restart
 
-            if not child_pid:
+            if not child_pid:      # child process
                 os.close(parent_side)
                 command = [sys.executable, '-c',
                     'import sys; from spawning import spawning_child; spawning_child.main()',
@@ -136,6 +136,8 @@ class Controller(object):
                 if not tpool_size in (0, 1):
                     env['EVENTLET_THREADPOOL_SIZE'] = str(tpool_size)
                 os.execve(sys.executable, command, env)
+                
+            # controller process
             os.close(child_side)
             self.child_pipes[child_pid] = parent_side
 
@@ -182,14 +184,15 @@ class Controller(object):
         for pid, pipe in self.child_pipes.items():
             try:
                 os.write(pipe, ' ')
-                os.close(pipe)
+                # all maintenance of child_pipes happens in runloop()
+                # as children die and os.wait() gets results
             except OSError, e:
                 if e.errno != errno.EPIPE:
                     raise
 
     def handle_deadlychild(self, *args, **kwargs):
         if self.keep_going:
-            self.log.debug('Child indicating it\'s about to die, starting a replacement')
+            self.log.debug('A child intends to die, starting replacement before it dies')
             self.spawn_children(number=1)
 
     def run(self):
