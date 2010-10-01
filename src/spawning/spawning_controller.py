@@ -23,9 +23,9 @@
 from __future__ import with_statement
 
 import commands
+import datetime
 import errno
 import logging
-import os
 import optparse
 import pprint
 import signal
@@ -42,6 +42,7 @@ except ImportError:
 
 import eventlet
 import eventlet.backdoor
+from eventlet.green import os
 
 import spawning
 import spawning.util
@@ -81,13 +82,20 @@ def environ():
 
     env['PYTHONPATH'] = ':'.join(new_path)
     return env
+    
+class Child(object):
+    def __init__(self, pid, kill_pipe):
+        self.pid = pid
+        self.kill_pipe = kill_pipe
+        self.active = True
+        self.forked_at = datetime.datetime.now()
 
 class Controller(object):
     sock = None
     factory = None
     args = None
     config = None
-    child_pipes = None
+    children = None
     keep_going = True
     panic = False
     log = None
@@ -99,13 +107,14 @@ class Controller(object):
         self.factory = factory
         self.config = spawning.util.named(factory)(args)
         self.args = args
-        self.child_pipes = {}
+        self.children = {}
         self.log = logging.getLogger('Spawning')
         if not kwargs.get('log_handler'):
             self.log.addHandler(logging.StreamHandler())
         self.log.setLevel(logging.DEBUG)
         self.controller_pid = os.getpid()
         self.num_processes = int(self.config.get('num_processes', 0))
+        self.started_at = datetime.datetime.now()
 
     def spawn_children(self, number=1):
         parent_pid = os.getpid()
@@ -139,19 +148,22 @@ class Controller(object):
                 
             # controller process
             os.close(child_side)
-            self.child_pipes[child_pid] = parent_side
-
+            self.children[child_pid] = Child(child_pid, parent_side)
+    
+    def children_count(self):
+        return len(self.children)
+    
     def runloop(self):
         while self.keep_going:
             eventlet.sleep(0.1)
             ## Only start the number of children we need
-            number = self.num_processes - len(self.child_pipes)
+            number = self.num_processes - self.children_count()
             if number > 0:
                 self.log.debug('Should start %d new children', number)
                 self.spawn_children(number=number)
                 continue
 
-            if not self.child_pipes:
+            if not self.children:
                 ## If we don't yet have children, let's loop
                 continue
 
@@ -162,9 +174,10 @@ class Controller(object):
                 if e.errno != errno.EINTR:
                     raise
 
-            if pid and self.child_pipes.get(pid):
+            if pid and self.children.get(pid):
                 try:
-                    os.close(self.child_pipes.pop(pid))
+                    child = self.children.pop(pid)
+                    os.close(child.kill_pipe)
                 except (IOError, OSError):
                     pass
 
@@ -181,10 +194,11 @@ class Controller(object):
             self.runloop()
 
     def kill_children(self):
-        for pid, pipe in self.child_pipes.items():
+        for pid, child in self.children.items():
             try:
-                os.write(pipe, ' ')
-                # all maintenance of child_pipes happens in runloop()
+                os.write(child.kill_pipe, 'k')
+                child.active = False
+                # all maintenance of children's membership happens in runloop()
                 # as children die and os.wait() gets results
             except OSError, e:
                 if e.errno != errno.EPIPE:
@@ -210,6 +224,12 @@ class Controller(object):
 
         signal.signal(signal.SIGHUP, self.handle_sighup)
         signal.signal(signal.SIGUSR1, self.handle_deadlychild)
+        
+        if self.config.get('status_port'):
+            from spawning.util import status
+            eventlet.spawn(status.Server, self, 
+                self.config['status_host'], self.config['status_port'])
+            
         try:
             self.runloop()
         except KeyboardInterrupt:
@@ -331,6 +351,10 @@ def main():
             help='Disable HTTP/1.1 KeepAlive')
     parser.add_option('-z', '--z-restart-args', dest='restart_args',
         help='For internal use only')
+    parser.add_option('--status-port', dest='status_port', type='int', default=0,
+        help='If given, hosts a server status page at that port.  Two pages are served: a human-readable HTML version at http://host:status_port/status, and a machine-readable version at http://host:status_port/status.json')
+    parser.add_option('--status-host', dest='status_host', type='string', default='',
+        help='If given, binds the server status page to the specified local ip address.  Defaults to the same value as --host.  If --status-port is not supplied, the status page will not be activated.')
 
     options, positional_args = parser.parse_args()
 
@@ -446,6 +470,11 @@ def main():
     # If you tell me to watch something, I'm going to reload then
     if options.watch:
         options.reload = True
+        
+    if options.status_port == options.port:
+        options.status_port = None
+        sys.stderr.write('**> Status port cannot be the same as the service port, disabling status.\n')
+        
 
     factory_args = {
         'verbose': options.verbose,
@@ -464,6 +493,8 @@ def main():
         'max_age' : options.max_age,
         'argv_str': " ".join(sys.argv[1:]),
         'args': positional_args,
+        'status_port': options.status_port,
+        'status_host': options.status_host or options.host
     }
     start_controller(sock, factory, factory_args)
 

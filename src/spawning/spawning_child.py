@@ -27,6 +27,7 @@
 import eventlet
 import eventlet.event
 import eventlet.greenio
+import eventlet.greenthread
 import eventlet.hubs
 import eventlet.wsgi
 
@@ -131,10 +132,49 @@ class SystemInfo(URLInterceptor):
 class ExitChild(Exception):
     pass
 
+class ChildStatus(object):
+    def __init__(self, controller_port):
+        self.controller_url =  "http://127.0.0.1:%s/" % controller_port
+        self.server = None
+        
+    def send_status_to_controller(self):
+        try:
+            child_status = {'pid':os.getpid()}
+            if self.server: 
+                child_status['concurrent_requests'] = \
+                    self.server.outstanding_requests
+            else:
+                child_status['error'] = 'Starting...'
+            body = json.dumps(child_status)
+            import urllib2
+            urllib2.urlopen(self.controller_url, body)
+        except (KeyboardInterrupt, SystemExit,
+             eventlet.greenthread.greenlet.GreenletExit):
+            raise
+        except Exception, e:  
+            # we really don't want exceptions here to stop read_pipe_and_die
+            pass
+
+_g_status = None
+def init_statusobj(status_port):
+    global _g_status
+    if status_port:
+        _g_status = ChildStatus(status_port)
+def get_statusobj():
+    return _g_status
+
+
 def read_pipe_and_die(the_pipe, server_coro):
     try:
-        eventlet.hubs.trampoline(the_pipe, read=True)
-        os.read(the_pipe, 1)
+        while True:
+            eventlet.hubs.trampoline(the_pipe, read=True)
+            c = os.read(the_pipe, 1)
+            # this is how the controller tells the child to send a status update
+            if c == 's' and get_statusobj():
+                get_statusobj().send_status_to_controller()
+                continue
+            else:          
+                break
     except socket.error:
         pass
     try:
@@ -192,6 +232,13 @@ def serve_from_child(sock, config, controller_pid):
         max_age = int(config.get('max_age'))
 
     server_event = eventlet.event.Event()
+    # the status object wants to have a reference to the server object
+    if config.get('status_port'):
+        def send_server_to_status(server_event):
+            server = server_event.wait()
+            get_statusobj().server = server
+        eventlet.spawn(send_server_to_status, server_event)
+
     http_version = config.get('no_keepalive') and 'HTTP/1.0' or 'HTTP/1.1'
     try:
         wsgi_args = (sock, wsgi_application)
@@ -217,7 +264,7 @@ def serve_from_child(sock, config, controller_pid):
     ## Once we get here, we just need to handle outstanding sockets, not
     ## accept any new sockets, so we should close the server socket.
     sock.close()
-
+    
     server = server_event.wait()
 
     last_outstanding = None
@@ -238,8 +285,10 @@ def serve_from_child(sock, config, controller_pid):
     print "(%s) *** Child exiting: all requests completed at %s" % (
         os.getpid(), time.asctime())
 
+
 def child_sighup(*args, **kwargs):
     exit(0)
+
 
 def main():
     parser = optparse.OptionParser()
@@ -260,6 +309,9 @@ def main():
     config = spawning.util.named(factory_qual)(json.loads(factory_args))
 
     setproctitle("spawn: child (%s)" % ", ".join(config.get("args")))
+    
+    ## Set up status reporter, if requested
+    init_statusobj(config.get('status_port'))
 
     ## Set up the reloader
     if config.get('reload'):

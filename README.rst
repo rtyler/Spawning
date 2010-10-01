@@ -16,7 +16,7 @@ If your wsgi applications perform a certain subset of blocking calls which have 
 
 Graceful Code Reloading
 =======================
-By default, Spawning watches all Python files that are imported into sys.modules for changes and performs a graceful reload on change. Old processes are told to stop accepting requests and finish any outstanding requests they are servicing, and shutdown. Meanwhile, new processes are started and begin accepting requests and servicing them with the new code. At no point will users of your site see "connection refused" errors because the server is continuously listening during reload.
+Spawning can watch all Python files that are imported into sys.modules for changes and performs a graceful reload on change. To enable this behavior, specify --reload=dev on the command line.  Old processes are told to stop accepting requests and finish any outstanding requests they are servicing, and shutdown. Meanwhile, new processes are started and begin accepting requests and servicing them with the new code. At no point will users of your site see "connection refused" errors because the server is continuously listening during reload.
 
 Running spawning
 ================
@@ -86,3 +86,23 @@ Additional Useful Arguments
     this time limit has expired a SIGHUP will be sent to
     spawning_controller, causing it to restart all of the
     child processes.
+
+--status-port=PORT, --status-host=HOST
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    If given, starts up a small web service to give 
+    health status reports on the Spawning server.  The 
+    service listens on two urls, 
+    
+    * http://status_host:status_port/status
+    * http://status_host:status_port/status.json
+    
+    The first is an HTML page that displays the status
+    of the server in a human-pleasing manner.  The .json
+    url is a JSON formatting of the same data.
+    
+    The status web service is only started if the 
+    --status-port option is supplied and different than
+    the service port.  --status-host is useful if
+    monitoring happens on a different ip address than
+    web application requests.
