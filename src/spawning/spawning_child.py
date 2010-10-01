@@ -165,6 +165,7 @@ def get_statusobj():
 
 
 def read_pipe_and_die(the_pipe, server_coro):
+    dying = False
     try:
         while True:
             eventlet.hubs.trampoline(the_pipe, read=True)
@@ -172,16 +173,15 @@ def read_pipe_and_die(the_pipe, server_coro):
             # this is how the controller tells the child to send a status update
             if c == 's' and get_statusobj():
                 get_statusobj().send_status_to_controller()
-                continue
-            else:          
-                break
+            elif not dying:
+                dying = True  # only send ExitChild once
+                eventlet.greenthread.kill(server_coro, ExitChild)
+                # continue to listen for status pings while dying
     except socket.error:
         pass
-    try:
-        os.close(the_pipe)
-    except socket.error:
-        pass
-    return server_coro.throw(ExitChild)
+    # if here, perhaps the controller's process went down; we should die too
+    if not dying:
+        eventlet.greenthread.kill(server_coro, ExitChild)
 
 
 def deadman_timeout(signum, frame):
@@ -267,7 +267,6 @@ def serve_from_child(sock, config, controller_pid):
     
     server = server_event.wait()
 
-    last_outstanding = None
     ## Let's tell our parent that we're dying
     try:
         os.kill(controller_pid, signal.SIGUSR1)
@@ -275,6 +274,7 @@ def serve_from_child(sock, config, controller_pid):
         if not e.errno == errno.ESRCH:
             raise
 
+    last_outstanding = None
     while server.outstanding_requests:
         if last_outstanding != server.outstanding_requests:
             print "(%s) %s requests remaining, waiting... (timeout after %s)" % (

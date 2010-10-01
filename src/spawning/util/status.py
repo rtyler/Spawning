@@ -61,12 +61,11 @@ class Server(object):
 
     def collect_child_status(self, child):
         self.child_events[child.pid] = event.Event()
-        # note: this may block the controller a little bit, we don't care
-        # so much because it's not doing any real work
         try:
             try:
                 # tell the child to POST its status to us, we handle it in the
                 # wsgi application below
+                eventlet.hubs.trampoline(child.kill_pipe, write=True)
                 os.write(child.kill_pipe, 's')
                 t = eventlet.Timeout(1)
                 results = self.child_events[child.pid].wait()
