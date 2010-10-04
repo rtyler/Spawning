@@ -195,7 +195,7 @@ def fill_template(status_data):
                   status_data['configured_children_count'])
     if status_data['active_children_count'] < \
        status_data['configured_children_count']:
-        count_td.attrs['cls'] = "alert"
+        count_td.attrs['cls'] = "error"
         count_td.children.append(
             span("(", status_data['killed_children_count'], ")"))
     children_table = table(
@@ -310,13 +310,10 @@ input {
     display: inline;
 }
 tr.child.dying {
-    background: #ffeecc;
-    color: #884400;
+    font-style: italic;
+    color: #444444;
 }
-tr.child.error {
-    background: #ff6666;
-}
-.alert {
+.error {
     background: #ff4444;
 }
 

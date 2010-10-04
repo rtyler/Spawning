@@ -179,9 +179,10 @@ def read_pipe_and_die(the_pipe, server_coro):
                 # continue to listen for status pings while dying
     except socket.error:
         pass
-    # if here, perhaps the controller's process went down; we should die too
+    # if here, perhaps the controller's process went down; we should die too if
+    # we aren't already
     if not dying:
-        eventlet.greenthread.kill(server_coro, ExitChild)
+        eventlet.greenthread.kill(server_coro, KeyboardInterrupt)
 
 
 def deadman_timeout(signum, frame):
@@ -202,6 +203,15 @@ def tpool_wsgi(app):
             # next() goes through tpool
             return tpool.Proxy(result)
     return tpooled_application
+
+
+def warn_controller_of_imminent_death(controller_pid):
+    # The controller responds to a SIGUSR1 by kicking off a new child process.
+    try:
+        os.kill(controller_pid, signal.SIGUSR1)
+    except OSError, e:
+        if not e.errno == errno.ESRCH:
+            raise
 
 
 def serve_from_child(sock, config, controller_pid):
@@ -249,12 +259,14 @@ def serve_from_child(sock, config, controller_pid):
             wsgi_kwargs.update({'timeout_value' : True})
             eventlet.with_timeout(max_age, eventlet.wsgi.server, *wsgi_args,
                     **wsgi_kwargs)
+            warn_controller_of_imminent_death(controller_pid)
         else:
             eventlet.wsgi.server(*wsgi_args, **wsgi_kwargs)
     except KeyboardInterrupt:
-        pass
+        # controller probably doesn't know that we got killed by a SIGINT
+        warn_controller_of_imminent_death(controller_pid)
     except ExitChild:
-        pass
+        pass  # parent killed us, it already knows we're dying
 
     ## Set a deadman timer to violently kill the process if it doesn't die after
     ## some long timeout.
@@ -266,13 +278,6 @@ def serve_from_child(sock, config, controller_pid):
     sock.close()
     
     server = server_event.wait()
-
-    ## Let's tell our parent that we're dying
-    try:
-        os.kill(controller_pid, signal.SIGUSR1)
-    except OSError, e:
-        if not e.errno == errno.ESRCH:
-            raise
 
     last_outstanding = None
     while server.outstanding_requests:
