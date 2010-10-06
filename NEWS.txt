@@ -31,6 +31,13 @@
     - Prevent leaking pipes when handling children processes
 
 
+0.9.5:
+    - Fixed a number of issues with reloading of Spawning children
+    - Added /_sysinfo to provide information about the machine
+    - Added health page that listens on a different port from the controller,
+      providing HTML and JSON formatted information about children
+    - Introduced a basic logfile analyzer for processsing Spawning logs for
+      further information not provided by the health page
 
 
 

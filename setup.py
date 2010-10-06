@@ -47,7 +47,7 @@ setup(
     ).read(),
     author='Donovan Preston',
     author_email='dsposx@mac.com',
-    maintainer='R. Tyler Ballance',
+    maintainer='R. Tyler Croy',
     maintainer_email='tyler@monkeypox.org',
     include_package_data = True,
     packages = find_packages('src'),

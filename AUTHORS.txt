@@ -5,4 +5,5 @@ Authors
  - Ludvig Ericson (contributor)
  - Elliot Murphy (contributor)
  - Steve 'Ashcrow' Milner (contributor)
- - R. Tyler Ballance (current maintainer)
+ - Ryan Williams (contributor)
+ - R. Tyler Croy (current maintainer)
