@@ -1,0 +1,17 @@
+# CONFIGURATION - edit this stuff with your keyboard.
+
+processes=2 # Number of processes to spawn
+threads=8 # Number of threads to spawn
+
+port="80"
+host="0.0.0.0" # listen on loopback by default
+
+# Django by default: delete this var to run a WSGI app
+factory="spawning.django_factory.config_factory"
+site_dir=/var/www/your-site/
+app="settings" # Django by default, but put your own app here
+
+access_log=/var/log/spawning/access_log
+error_log=/var/log/spawning/error_log
+
+python_path=$site_dir:/usr/lib/python26.zip:/usr/lib/python2.6:/usr/lib/python2.6/lib-old:/usr/lib/python2.6/lib-dynload:/usr/lib/python2.6/site-packages

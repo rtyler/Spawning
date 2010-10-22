@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# spawning      Starts Spawning 
+#
+#
+# chkconfig: 345 88 12
+# description: Spawning is a lightweight http daemon.
+### BEGIN INIT INFO
+# Provides: $spawning
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# config
+if [ -f /etc/sysconfig/spawning.my-app-name ]; then
+    . /etc/sysconfig/spawning.my-app-name
+fi
+
+name="spawning.my-app-name"
+prog="spawning"
+exec=/usr/bin/spawning #Path to Spawning executable
+
+description="Starts a Spawning daemon to run the internets"
+# This is where your app or settings.py lives
+
+# Don't edit this
+PIDFILE=/var/run/$NAME.pid
+lockfile=/var/lock/subsys/${prog}
+
+export PYTHONPATH=${python_path}
+
+# make sure the access_log file exists
+if [ ! -e $access_log ]; then
+    touch $access_log
+fi
+# make sure the error log file exists
+if [ ! -e $error_log ]; then
+    touch $error_log
+fi
+
+start() {
+
+
+    echo -n "Starting $name on $host:$port...: "
+
+    conf="--host=$host --port=$port"
+    conf="$conf --stderr=$error_log --access-log-file=$access_log"
+    [ -n "$pocesses" ]  && conf="$conf --processes=$processes"
+    [ -n "$threads" ]  && conf="$conf --threads=$threads"
+    [ -n "$factory" ]    && conf="$conf --factory=$factory"
+    conf="$conf $app"
+
+    # if not running, start it up here, usually something like "daemon $exec"
+    daemon $exec --daemonize $conf
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop () {
+    echo -n $"Stopping $prog: "
+    # stop it here, often "killproc $prog"
+    killproc $prog
+    retval=$?
+    echo
+    return $retval
+}
+
+status() {
+    if [ -f "$PIDFILE" ]; then
+        echo -n "$name already running with PIDs: " && cat $PIDFILE && echo
+    else
+        echo "$name not running"
+    fi
+    return
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+        stop
+        sleep 1
+        start
+        ;;
+    *)
+        echo "Usage: $name (start|stop|status|restart)"
+        exit 1
+        ;;
+esac
+exit $?
