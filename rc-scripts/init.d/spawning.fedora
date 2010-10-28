@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# spawning      Starts Spawning 
+# spawning.$app_name      Starts Spawning 
 #
 #
 # chkconfig: 345 88 12
@@ -13,22 +13,24 @@
 . /etc/rc.d/init.d/functions
 
 # config
-if [ -f /etc/sysconfig/spawning.my-app-name ]; then
-    . /etc/sysconfig/spawning.my-app-name
+if [ -f /etc/sysconfig/spawning.$app_name ]; then
+    . /etc/sysconfig/spawning.$app_name
 fi
 
-name="spawning.my-app-name"
+name="spawning.$app_name"
 prog="spawning"
-exec=/usr/bin/spawning #Path to Spawning executable
+exec=$exec  #Path to Spawning executable
 
 description="Starts a Spawning daemon to run the internets"
 # This is where your app or settings.py lives
 
 # Don't edit this
-PIDFILE=/var/run/$NAME.pid
-lockfile=/var/lock/subsys/${prog}
+PIDFILE=/var/run/$name.pid
+lockfile=/var/lock/subsys/${name}
 
-export PYTHONPATH=${python_path}
+if [ $python_path ]; then
+    export PYTHONPATH=${python_path}
+fi
 
 # make sure the access_log file exists
 if [ ! -e $access_log ]; then
@@ -43,18 +45,24 @@ start() {
 
 
     echo -n "Starting $name on $host:$port...: "
+    echo -e "\n"
 
     conf="--host=$host --port=$port"
     conf="$conf --stderr=$error_log --access-log-file=$access_log"
     [ -n "$pocesses" ]  && conf="$conf --processes=$processes"
-    [ -n "$threads" ]  && conf="$conf --threads=$threads"
-    [ -n "$factory" ]    && conf="$conf --factory=$factory"
-    conf="$conf $app"
+    [ -n "$threads" ]   && conf="$conf --threads=$threads"
+    [ -n "$factory" ]   && conf="$conf --factory=$factory"
+    [ -n "$dev" ]       && conf="$conf --reload=dev"
+    [ -n "$CHUID" ]     && conf="$conf --chuid=$CHUID"
 
+    conf="$conf $app"
+    
     # if not running, start it up here, usually something like "daemon $exec"
     daemon $exec --daemonize $conf
     retval=$?
-    echo
+
+    echo -e "\n"
+
     [ $retval -eq 0 ] && touch $lockfile
     return $retval
 }
