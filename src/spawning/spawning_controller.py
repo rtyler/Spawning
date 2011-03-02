@@ -22,6 +22,9 @@
 # THE SOFTWARE.
 from __future__ import with_statement
 
+import eventlet
+eventlet.monkey_patch()
+
 import commands
 import datetime
 import errno
@@ -40,7 +43,6 @@ except ImportError:
     import json
 
 
-import eventlet
 import eventlet.backdoor
 from eventlet.green import os
 
