@@ -35,9 +35,9 @@ import time
 import traceback
 
 try:
-    import json
-except ImportError:
     import simplejson as json
+except ImportError:
+    import json
 
 
 import eventlet
