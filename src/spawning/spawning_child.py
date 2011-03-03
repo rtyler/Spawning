@@ -223,7 +223,7 @@ def serve_from_child(sock, config, controller_pid):
     if config.get('sysinfo'):
         wsgi_application = SystemInfo(wsgi_application)
 
-    if threads > 1:
+    if threads >= 1:
         # proxy calls of the application through tpool
         wsgi_application = tpool_wsgi(wsgi_application)
     elif threads != 1:
