@@ -43,9 +43,9 @@ import spawning.util
 from spawning import setproctitle, reloader_dev
 
 try:
-    import json
-except ImportError:
     import simplejson as json
+except ImportError:
+    import json
 
 
 class URLInterceptor(object):
