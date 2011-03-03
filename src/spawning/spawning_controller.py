@@ -84,7 +84,7 @@ def environ():
 
     env['PYTHONPATH'] = ':'.join(new_path)
     return env
-    
+
 class Child(object):
     def __init__(self, pid, kill_pipe):
         self.pid = pid
@@ -147,14 +147,14 @@ class Controller(object):
                 if not tpool_size in (0, 1):
                     env['EVENTLET_THREADPOOL_SIZE'] = str(tpool_size)
                 os.execve(sys.executable, command, env)
-                
+
             # controller process
             os.close(child_side)
             self.children[child_pid] = Child(child_pid, parent_side)
-    
+
     def children_count(self):
         return len(self.children)
-    
+
     def runloop(self):
         while self.keep_going:
             eventlet.sleep(0.1)
@@ -228,12 +228,12 @@ class Controller(object):
 
         signal.signal(signal.SIGHUP, self.handle_sighup)
         signal.signal(signal.SIGUSR1, self.handle_deadlychild)
-        
+
         if self.config.get('status_port'):
             from spawning.util import status
-            eventlet.spawn(status.Server, self, 
+            eventlet.spawn(status.Server, self,
                 self.config['status_host'], self.config['status_port'])
-            
+
         try:
             self.runloop()
         except KeyboardInterrupt:
@@ -474,11 +474,11 @@ def main():
     # If you tell me to watch something, I'm going to reload then
     if options.watch:
         options.reload = True
-        
+
     if options.status_port == options.port:
         options.status_port = None
         sys.stderr.write('**> Status port cannot be the same as the service port, disabling status.\n')
-        
+
 
     factory_args = {
         'verbose': options.verbose,
