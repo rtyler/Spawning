@@ -1,4 +1,3 @@
 include *.txt *.rst *.py
-recursive-include src/spawning *.py
-recursive-include src/Spawning.egg-info *
+recursive-include spawning *.py
 recursive-include rc-scripts *

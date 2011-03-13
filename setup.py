@@ -21,8 +21,6 @@
 
 import sys
 
-# Insert src/ into our path so we can pull the version and include it
-sys.path.insert(0, 'src')
 from spawning import __version__
 
 from os import path
@@ -50,8 +48,8 @@ setup(
     maintainer='R. Tyler Croy',
     maintainer_email='tyler@monkeypox.org',
     include_package_data = True,
-    packages = find_packages('src'),
-    package_dir = {'': 'src'},
+    packages = ['spawning'],
+    package_dir = {'': '.'},
     version=__version__,
     install_requires=install_requires,
     entry_points={
