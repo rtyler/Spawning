@@ -120,7 +120,6 @@ class Controller(object):
 
     def spawn_children(self, number=1):
         parent_pid = os.getpid()
-        self.log.debug('Controller.spawn_children(number=%d)' % number)
 
         for i in range(number):
             child_side, parent_side = os.pipe()
@@ -209,8 +208,12 @@ class Controller(object):
                     raise
 
     def handle_deadlychild(self, *args, **kwargs):
+        """
+            SIGUSR1 handler, will spin up an extra child to handle the load
+            left over after a previously running child stops taking connections
+            and "dies" gracefully
+        """
         if self.keep_going:
-            self.log.debug('A child intends to die, starting replacement before it dies')
             self.spawn_children(number=1)
 
     def run(self):
