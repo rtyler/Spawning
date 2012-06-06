@@ -24,7 +24,6 @@
 import inspect
 import os
 import django.core.handlers.wsgi
-from django.core.servers.basehttp import AdminMediaHandler
 
 import spawning.util
 
@@ -52,7 +51,6 @@ def app_factory(config):
     os.environ['DJANGO_SETTINGS_MODULE'] = config['django_settings_module']
 
     app = django.core.handlers.wsgi.WSGIHandler()
-    if config.get('dev'):
-        app = AdminMediaHandler(app)
+
     return app
 
